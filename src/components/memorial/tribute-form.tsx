@@ -10,9 +10,10 @@ export function TributeForm({ memorialId, slug }: { memorialId: string; slug: st
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setPending(true);
     setError(null);
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(form);
     try {
       const res = await fetch(`/api/proxy/memorials/${memorialId}/tributes`, {
         method: "POST",
@@ -26,7 +27,7 @@ export function TributeForm({ memorialId, slug }: { memorialId: string; slug: st
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Could not post tribute");
       }
-      e.currentTarget.reset();
+      form.reset();
       router.push(`/memorial/${slug}?tab=tributes`);
       router.refresh();
     } catch (err) {
