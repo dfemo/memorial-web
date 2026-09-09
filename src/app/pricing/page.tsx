@@ -1,35 +1,43 @@
 import Link from "next/link";
-import { BILLING_COPY } from "@/lib/stripe";
 
 export const metadata = { title: "Pricing" };
 
-export default function PricingPage() {
-  const plans = [
-    BILLING_COPY.FREE,
-    BILLING_COPY.PREMIUM_MONTHLY,
-    BILLING_COPY.PREMIUM_YEARLY,
-    BILLING_COPY.LIFETIME,
-  ];
+const plans = [
+  {
+    name: "Free",
+    price: "$0",
+    detail: "Create a memorial, guestbook, and core photo gallery.",
+  },
+  {
+    name: "Premium",
+    price: "Coming soon",
+    detail: "More media, invite-only privacy, and richer storytelling.",
+  },
+  {
+    name: "Lifetime",
+    price: "Coming soon",
+    detail: "One payment for lasting permanence — payment providers pluggable.",
+  },
+];
 
+export default function PricingPage() {
   return (
     <section className="section">
       <div className="wrap">
         <h2>Simple plans for lasting remembrance</h2>
         <p className="lede">
-          Start free. Upgrade when you need more media, privacy, and permanence —
-          including a one-time Lifetime option.
+          Start free today. Premium and Lifetime are designed for when you need more space and
+          privacy — without locking you to a single payment vendor.
         </p>
-        <div className="pricing-grid">
-          {plans.map((plan) => (
-            <div key={plan.name} className="price-panel">
-              <h3>{plan.name}</h3>
-              <div className="amount">{plan.price}</div>
-              <p>{plan.detail}</p>
-              <div style={{ marginTop: "1.2rem" }}>
-                <Link href="/sign-up" className="btn btn-solid">
-                  Get started
-                </Link>
-              </div>
+        <div className="card-grid">
+          {plans.map((p) => (
+            <div key={p.name} className="soft-card">
+              <h3>{p.name}</h3>
+              <p style={{ fontSize: "1.5rem", margin: "0.3rem 0 0.8rem" }}>{p.price}</p>
+              <p>{p.detail}</p>
+              <Link href="/create" className="btn btn-solid" style={{ marginTop: "1rem" }}>
+                Get started
+              </Link>
             </div>
           ))}
         </div>

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const display = Cormorant_Garamond({
+const display = Fraunces({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-display",
@@ -18,11 +18,11 @@ const body = Source_Sans_3({
 
 export const metadata: Metadata = {
   title: {
-    default: "Let Us Handle Your Funeral",
-    template: "%s · Let Us Handle Your Funeral",
+    default: "EverRemember",
+    template: "%s · EverRemember",
   },
   description:
-    "Create lasting online memorials and coordinate funeral services with trusted vendors.",
+    "Create a beautiful memorial where family and friends can share stories, photos and memories.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

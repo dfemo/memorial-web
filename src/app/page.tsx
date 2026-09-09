@@ -1,36 +1,31 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { displayName } from "@/lib/plans";
+import { apiV1, type Memorial } from "@/lib/api-v1";
 import { getPublicSiteConfig } from "@/lib/site-config";
 
 export default async function HomePage() {
   const config = await getPublicSiteConfig();
-
-  let featured: Awaited<ReturnType<typeof prisma.memorial.findMany>> = [];
-  if (config.showFeaturedMemorials) {
-    try {
-      featured = await prisma.memorial.findMany({
-        where: { featured: true, privacy: "PUBLIC" },
-        take: 3,
-        orderBy: { updatedAt: "desc" },
-      });
-    } catch {
-      // DB optional for marketing shell when only API config is available
-    }
+  let featured: Memorial[] = [];
+  try {
+    featured = await apiV1<Memorial[]>("/api/v1/memorials/featured", { auth: false });
+  } catch {
+    featured = [];
   }
 
   return (
     <>
       <section className="hero">
         <div className="hero-content">
-          <h1>{config.brandName}</h1>
-          <p>{config.tagline}</p>
+          <h1>Keep Their Memory Alive, Forever.</h1>
+          <p>
+            Create a beautiful memorial where family and friends can share stories, photos and
+            memories of the people who matter most.
+          </p>
           <div className="cta-row">
-            <Link href="/sign-up" className="btn btn-primary">
-              {config.heroCtaPrimary}
+            <Link href="/create" className="btn btn-primary">
+              Create a Memorial
             </Link>
-            <Link href="/pricing" className="btn btn-ghost">
-              {config.heroCtaSecondary}
+            <Link href="/browse" className="btn btn-ghost">
+              Explore Memorials
             </Link>
           </div>
         </div>
@@ -38,61 +33,60 @@ export default async function HomePage() {
 
       <section className="section">
         <div className="wrap">
-          <h2>{config.sectionTitle}</h2>
-          <p className="lede">{config.sectionLede}</p>
+          <h2>How it works</h2>
+          <p className="lede">Three gentle steps from remembrance to a lasting place online.</p>
           <div className="feature-grid">
-            <div className="feature-item">
-              <h3>Memorial pages</h3>
-              <p>Biography, galleries, service information, and themes that feel personal.</p>
+            <div className="soft-card">
+              <h3>1. Create</h3>
+              <p>Share a name, dates, photos, and the story that made them unique.</p>
             </div>
-            <div className="feature-item">
-              <h3>Guestbook tributes</h3>
-              <p>Invite stories, condolences, and memories that grow over time.</p>
+            <div className="soft-card">
+              <h3>2. Invite</h3>
+              <p>Bring family and friends to add memories, tributes, and photographs.</p>
             </div>
-            <div className="feature-item">
-              <h3>Privacy controls</h3>
-              <p>Public, unlisted, or private access so you decide who can visit.</p>
+            <div className="soft-card">
+              <h3>3. Remember</h3>
+              <p>Return on birthdays and anniversaries — a calm space that stays with you.</p>
             </div>
-            {config.showVendorDirectory && (
-              <div className="feature-item">
-                <h3>Vendor help</h3>
-                <p>
-                  Request florists, funeral homes, and celebrants with clear notes on what you need.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </section>
 
-      {config.showPartnerResources && (
-        <section className="section" style={{ paddingTop: 0 }}>
-          <div className="wrap">
-            <div className="panel" style={{ padding: "1.5rem" }}>
-              <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
-                {config.partnerTitle}
-              </h2>
-              <p className="lede" style={{ marginBottom: "1rem" }}>
-                {config.partnerBody}
-              </p>
-              <Link href={config.partnerCtaUrl} className="btn btn-solid">
-                {config.partnerCtaLabel}
-              </Link>
+      <section className="section" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <h2>{config.sectionTitle}</h2>
+          <p className="lede">{config.sectionLede}</p>
+          <div className="feature-grid">
+            <div className="soft-card">
+              <h3>Life stories</h3>
+              <p>Biography, service details, and the moments that shaped a life.</p>
+            </div>
+            <div className="soft-card">
+              <h3>Photos & videos</h3>
+              <p>Galleries that feel personal — not like a social feed.</p>
+            </div>
+            <div className="soft-card">
+              <h3>Tributes</h3>
+              <p>Messages and memories from everyone who loved them.</p>
+            </div>
+            <div className="soft-card">
+              <h3>Privacy you control</h3>
+              <p>Public, invite-only, or private — you decide who can visit.</p>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {config.showFeaturedMemorials && featured.length > 0 && (
+      {featured.length > 0 && (
         <section className="section" style={{ paddingTop: 0 }}>
           <div className="wrap">
             <h2>Featured memorials</h2>
-            <p className="lede">A few public remembrances shared with the community.</p>
-            <div className="feature-grid">
+            <p className="lede">A few public remembrances shared with care.</p>
+            <div className="card-grid">
               {featured.map((m) => (
-                <Link key={m.id} href={`/memorials/${m.slug}`} className="price-panel">
-                  <h3>{displayName(m.firstName, m.lastName)}</h3>
-                  <p>{m.biography?.slice(0, 120) || "A life remembered."}</p>
+                <Link key={m.id} href={`/memorial/${m.slug}`} className="soft-card">
+                  <h3>{m.displayName}</h3>
+                  <p>{m.biography?.slice(0, 140) || "In loving memory."}</p>
                 </Link>
               ))}
             </div>
@@ -100,23 +94,17 @@ export default async function HomePage() {
         </section>
       )}
 
-      {config.showVendorDirectory && config.vendors.length > 0 && (
-        <section className="section" style={{ paddingTop: 0 }}>
-          <div className="wrap">
-            <h2>{config.vendorsTitle}</h2>
-            <p className="lede">{config.vendorsLede}</p>
-            <div className="pricing-grid">
-              {config.vendors.slice(0, 3).map((v) => (
-                <Link key={v.id} href="/vendors" className="price-panel">
-                  <span className="badge">{v.category}</span>
-                  <h3 style={{ marginTop: "0.6rem" }}>{v.businessName}</h3>
-                  <p>{v.description || "Professional funeral services."}</p>
-                </Link>
-              ))}
-            </div>
+      <section className="section" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <div className="soft-card">
+            <h2 style={{ marginTop: 0 }}>Plans that grow with you</h2>
+            <p className="lede">Start free. Upgrade for more media, privacy, and permanence.</p>
+            <Link href="/pricing" className="btn btn-solid">
+              View pricing
+            </Link>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </>
   );
 }
