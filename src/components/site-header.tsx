@@ -2,7 +2,12 @@ import Link from "next/link";
 import { auth } from "@/auth";
 
 export async function SiteHeader() {
-  const session = await auth();
+  let session: Awaited<ReturnType<typeof auth>> = null;
+  try {
+    session = await auth();
+  } catch {
+    // Missing AUTH_SECRET / host trust in production must not blank the whole site
+  }
 
   return (
     <header className="site-header">

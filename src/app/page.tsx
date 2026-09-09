@@ -3,11 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { displayName } from "@/lib/plans";
 
 export default async function HomePage() {
-  const featured = await prisma.memorial.findMany({
-    where: { featured: true, privacy: "PUBLIC" },
-    take: 3,
-    orderBy: { updatedAt: "desc" },
-  });
+  let featured: Awaited<ReturnType<typeof prisma.memorial.findMany>> = [];
+  try {
+    featured = await prisma.memorial.findMany({
+      where: { featured: true, privacy: "PUBLIC" },
+      take: 3,
+      orderBy: { updatedAt: "desc" },
+    });
+  } catch {
+    // Production without a reachable DATABASE_URL (e.g. SQLite on serverless) should still render
+  }
 
   return (
     <>

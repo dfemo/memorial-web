@@ -11,6 +11,12 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Required on Vercel / reverse proxies or Auth.js throws and every page fails to load
+  trustHost: true,
+  secret:
+    process.env.AUTH_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    "dev-only-insecure-secret-set-AUTH_SECRET",
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {
