@@ -1,48 +1,29 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { createPlatformJwt, platformFetch } from "@/lib/platform";
-
-type Vendor = {
-  id: number;
-  businessName: string;
-  category: string;
-  description?: string;
-  serviceArea?: string;
-  pricingNotes?: string;
-  status: string;
-};
+import { getPublicSiteConfig } from "@/lib/site-config";
 
 export const metadata = { title: "Vendors" };
 
 export default async function VendorsPage() {
-  const session = await auth();
-  let vendors: Vendor[] = [];
-  let apiDown = false;
+  const config = await getPublicSiteConfig();
+  if (!config.showVendorDirectory) redirect("/");
 
+  let session = null;
   try {
-    const token = session?.user
-      ? await createPlatformJwt({
-          sub: session.user.id,
-          email: session.user.email || "",
-          role: session.user.role,
-          name: session.user.name,
-        })
-      : undefined;
-    const res = await platformFetch("/api/vendors/public", { token });
-    if (res.ok) vendors = await res.json();
-    else apiDown = true;
+    session = await auth();
   } catch {
-    apiDown = true;
+    /* ignore */
   }
+
+  const vendors = config.vendors;
+  const apiDown = config.source === "fallback";
 
   return (
     <section className="section">
       <div className="wrap">
-        <h2>Trusted funeral vendors</h2>
-        <p className="lede">
-          Browse approved providers — florists, funeral homes, celebrants, and more.
-          Share request notes so they know exactly what you need.
-        </p>
+        <h2>{config.vendorsTitle}</h2>
+        <p className="lede">{config.vendorsLede}</p>
         {session?.user && (
           <p style={{ marginBottom: "1.5rem" }}>
             <Link href="/dashboard/vendor" className="btn btn-solid">
@@ -56,7 +37,7 @@ export default async function VendorsPage() {
         {apiDown && (
           <div className="panel" style={{ marginBottom: "1rem" }}>
             <p style={{ margin: 0, color: "var(--muted)" }}>
-              Vendor directory will appear when the platform API is running on port 8080.
+              Connect PLATFORM_API_URL to load the live vendor directory and admin-managed copy.
             </p>
           </div>
         )}

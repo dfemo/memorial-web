@@ -1,23 +1,27 @@
 import Link from "next/link";
+import type { Session } from "next-auth";
 import { auth } from "@/auth";
+import { getPublicSiteConfig } from "@/lib/site-config";
 
 export async function SiteHeader() {
-  let session: Awaited<ReturnType<typeof auth>> = null;
+  let session: Session | null = null;
   try {
     session = await auth();
   } catch {
     // Missing AUTH_SECRET / host trust in production must not blank the whole site
   }
 
+  const config = await getPublicSiteConfig();
+
   return (
     <header className="site-header">
       <div className="site-header-inner">
         <Link href="/" className="brand-mark">
-          Let Us Handle Your Funeral
+          {config.brandName}
         </Link>
         <nav className="site-nav">
           <Link href="/pricing">Pricing</Link>
-          <Link href="/vendors">Vendors</Link>
+          {config.showVendorDirectory && <Link href="/vendors">Vendors</Link>}
           {session?.user ? (
             <>
               <Link href="/dashboard">Dashboard</Link>

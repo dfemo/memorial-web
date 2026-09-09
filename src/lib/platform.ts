@@ -33,17 +33,26 @@ export async function verifyPlatformJwt(token: string) {
 
 export async function platformFetch(
   path: string,
-  options: RequestInit & { token?: string } = {},
+  options: RequestInit & { token?: string; revalidate?: number | false } = {},
 ) {
   const base = process.env.PLATFORM_API_URL || "http://localhost:8080";
-  const headers = new Headers(options.headers);
+  const { token, revalidate, ...init } = options;
+  const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
-  if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${base}${path}`, {
-    ...options,
+  const next =
+    revalidate === false
+      ? undefined
+      : { revalidate: typeof revalidate === "number" ? revalidate : 0 };
+
+  return fetch(`${base}${path}`, {
+    ...init,
     headers,
-    cache: "no-store",
+    ...(revalidate === false || revalidate === 0
+      ? { cache: "no-store" as const }
+      : next
+        ? { next }
+        : { cache: "no-store" as const }),
   });
-  return res;
 }
