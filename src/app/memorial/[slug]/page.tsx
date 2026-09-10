@@ -58,6 +58,49 @@ export default async function PublicMemorialPage({
   }
 
   const m = detail.memorial;
+
+  let publishedStory: string | null = null;
+  let timeline: Array<{
+    id: string;
+    eventType: string;
+    title: string;
+    description?: string;
+    eventDate?: string | null;
+  }> = [];
+  let legacyMemories: Array<{
+    id: string;
+    title: string;
+    content: string;
+    category: string;
+  }> = [];
+
+  try {
+    const story = await apiV1<{ narrative: string }>(
+      `/api/v1/memorials/${m.id}/legacy-ai/story`,
+      { auth: false },
+    );
+    publishedStory = story.narrative;
+  } catch {
+    publishedStory = null;
+  }
+  try {
+    const tl = await apiV1<{ items: typeof timeline }>(
+      `/api/v1/memorials/${m.id}/legacy-ai/timeline`,
+      { auth: false },
+    );
+    timeline = tl.items || [];
+  } catch {
+    timeline = [];
+  }
+  try {
+    legacyMemories = await apiV1<typeof legacyMemories>(
+      `/api/v1/memorials/${m.id}/legacy-ai/memories`,
+      { auth: false },
+    );
+  } catch {
+    legacyMemories = [];
+  }
+
   const birth = formatDate(m.dateOfBirth);
   const death = formatDate(m.dateOfDeath);
   const cover =
@@ -70,6 +113,8 @@ export default async function PublicMemorialPage({
   const tabs = [
     { id: "home", label: "Home" },
     { id: "story", label: "Life Story" },
+    { id: "tell", label: "Tell Their Story" },
+    { id: "timeline", label: "Timeline" },
     { id: "memories", label: "Memories" },
     { id: "photos", label: "Photos" },
     { id: "tributes", label: "Tributes" },
@@ -91,8 +136,8 @@ export default async function PublicMemorialPage({
             <Link href={`?tab=tributes`} className="btn btn-primary">
               Leave a Tribute
             </Link>
-            <Link href={`?tab=memories`} className="btn btn-ghost">
-              Share a Memory
+            <Link href={`?tab=tell`} className="btn btn-ghost">
+              Tell Their Story
             </Link>
           </div>
         </div>
@@ -123,6 +168,71 @@ export default async function PublicMemorialPage({
           </section>
         )}
 
+        {(tab === "tell" || tab === "home") && publishedStory && (
+          <section className="soft-card">
+            <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Tell Their Story</h2>
+            <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+              Family-approved narrative created with Legacy AI from supplied memories only.
+            </p>
+            <p style={{ whiteSpace: "pre-wrap" }}>{publishedStory}</p>
+          </section>
+        )}
+
+        {tab === "tell" && !publishedStory && (
+          <section className="soft-card">
+            <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Tell Their Story</h2>
+            <p style={{ color: "var(--muted)", marginBottom: 0 }}>
+              An approved public narrative has not been published yet.
+            </p>
+          </section>
+        )}
+
+        {(tab === "timeline" || tab === "home") && timeline.length > 0 && (
+          <section className="soft-card">
+            <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Life timeline</h2>
+            <div style={{ display: "grid", gap: "0.9rem" }}>
+              {timeline.map((item) => (
+                <div key={item.id} style={{ borderLeft: "3px solid var(--accent-soft)", paddingLeft: "0.9rem" }}>
+                  <span className="badge">{item.eventType}</span>
+                  <h3 style={{ fontFamily: "var(--font-display)", margin: "0.35rem 0" }}>
+                    {item.title}
+                  </h3>
+                  {item.eventDate && (
+                    <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                      {formatDate(item.eventDate)}
+                    </div>
+                  )}
+                  <p style={{ marginBottom: 0 }}>{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {(tab === "memories" || tab === "home") && (
+          <section className="soft-card">
+            <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Memories</h2>
+            {legacyMemories.map((mem) => (
+              <article key={mem.id} style={{ marginBottom: "1.1rem" }}>
+                <span className="badge">{mem.category}</span>
+                <h3 style={{ fontFamily: "var(--font-display)", margin: "0.35rem 0" }}>
+                  {mem.title}
+                </h3>
+                <p style={{ whiteSpace: "pre-wrap" }}>{mem.content}</p>
+              </article>
+            ))}
+            {detail.stories.map((s) => (
+              <article key={s.id} style={{ marginBottom: "1.1rem" }}>
+                <h3 style={{ fontFamily: "var(--font-display)", marginBottom: 0 }}>{s.title}</h3>
+                <p style={{ whiteSpace: "pre-wrap" }}>{s.content}</p>
+              </article>
+            ))}
+            {legacyMemories.length === 0 && detail.stories.length === 0 && (
+              <p style={{ color: "var(--muted)" }}>No categorized memories yet.</p>
+            )}
+          </section>
+        )}
+
         {(tab === "home" || tab === "photos") && detail.photos.length > 0 && (
           <section className="soft-card">
             <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Photos</h2>
@@ -135,24 +245,15 @@ export default async function PublicMemorialPage({
           </section>
         )}
 
-        {(tab === "memories" || tab === "home") && detail.stories.length > 0 && (
-          <section className="soft-card">
-            <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Stories</h2>
-            {detail.stories.map((s) => (
-              <article key={s.id} style={{ marginBottom: "1.25rem" }}>
-                <h3 style={{ fontFamily: "var(--font-display)", marginBottom: 0 }}>{s.title}</h3>
-                <p style={{ whiteSpace: "pre-wrap" }}>{s.content}</p>
-              </article>
-            ))}
-          </section>
-        )}
-
         {(tab === "tributes" || tab === "home") && (
           <section className="soft-card">
             <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Tributes</h2>
             <TributeForm memorialId={m.id} slug={m.slug} />
             {detail.tributes.map((t) => (
-              <div key={t.id} style={{ borderTop: "1px solid var(--line)", marginTop: "1rem", paddingTop: "1rem" }}>
+              <div
+                key={t.id}
+                style={{ borderTop: "1px solid var(--line)", marginTop: "1rem", paddingTop: "1rem" }}
+              >
                 <strong>{t.authorName}</strong>
                 <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
                   {new Date(t.createdAt).toLocaleString()}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LegacyAiPanel } from "@/components/memorial/legacy-ai-panel";
 import { apiV1, getAccessToken, type MemorialDetail } from "@/lib/api-v1";
 
 export default async function ManageMemorialPage({
@@ -34,15 +35,13 @@ export default async function ManageMemorialPage({
         <p>
           Public page: <Link href={`/memorial/${m.slug}`}>/memorial/{m.slug}</Link>
         </p>
-        <p style={{ color: "var(--muted)" }}>
+        <p style={{ color: "var(--muted)", marginBottom: 0 }}>
           Stories: {detail.stories.length} · Photos: {detail.photos.length} · Tributes:{" "}
           {detail.tributes.length} · Contributors: {detail.contributors.length}
         </p>
-        <p style={{ marginBottom: 0 }}>
-          Full media management, contributor invites, and moderation tools are next — core create,
-          publish, browse, and tributes are live through the platform API.
-        </p>
       </div>
+
+      <LegacyAiPanel memorialId={m.id} />
     </div>
   );
 }
