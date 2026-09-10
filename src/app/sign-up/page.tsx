@@ -1,6 +1,7 @@
-import Link from "next/link";
+import { SignUpForm } from "@/components/auth/sign-up-form";
 
 export const metadata = { title: "Sign up" };
+export const dynamic = "force-dynamic";
 
 export default async function SignUpPage({
   searchParams,
@@ -31,33 +32,7 @@ export default async function SignUpPage({
             {sp.error}
           </p>
         )}
-        <form className="form-stack" action="/api/session/register" method="post">
-          <input type="hidden" name="next" value={next} />
-          <div style={{ display: "grid", gap: "0.9rem", gridTemplateColumns: "1fr 1fr" }}>
-            <label>
-              First name
-              <input name="firstName" required />
-            </label>
-            <label>
-              Last name
-              <input name="lastName" required />
-            </label>
-          </div>
-          <label>
-            Email
-            <input name="email" type="email" required autoComplete="email" />
-          </label>
-          <label>
-            Password
-            <input name="password" type="password" required minLength={8} autoComplete="new-password" />
-          </label>
-          <button className="btn btn-solid" type="submit">
-            Create account
-          </button>
-        </form>
-        <p style={{ marginTop: "1rem" }}>
-          Already have an account? <Link href="/sign-in">Sign in</Link>
-        </p>
+        <SignUpForm nextPath={next} />
       </div>
     </div>
   );

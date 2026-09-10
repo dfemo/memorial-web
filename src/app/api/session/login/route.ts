@@ -1,5 +1,34 @@
 import { NextResponse } from "next/server";
-import { apiBase, applyAuthCookies, clearAuthCookiesOn } from "@/lib/api-v1";
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  apiBase,
+  authCookieOptionsForRequest,
+} from "@/lib/api-v1";
+
+function wantsJson(request: Request) {
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("application/json");
+}
+
+function setSessionCookies(
+  response: NextResponse,
+  request: Request,
+  accessToken: string,
+  refreshToken: string,
+) {
+  response.cookies.set(ACCESS_COOKIE, accessToken, authCookieOptionsForRequest(request, 60 * 60 * 8));
+  response.cookies.set(
+    REFRESH_COOKIE,
+    refreshToken,
+    authCookieOptionsForRequest(request, 60 * 60 * 24 * 30),
+  );
+  response.cookies.set(
+    "er_auth",
+    "1",
+    authCookieOptionsForRequest(request, 60 * 60 * 8, { httpOnly: false }),
+  );
+}
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -32,19 +61,26 @@ export async function POST(request: Request) {
       throw new Error(data.error || data.message || `Sign-in failed (${res.status})`);
     }
 
+    if (wantsJson(request)) {
+      const response = NextResponse.json({ ok: true, next: safeNext });
+      setSessionCookies(response, request, data.accessToken, data.refreshToken);
+      return response;
+    }
+
     const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
-    applyAuthCookies(response, data.accessToken, data.refreshToken);
+    setSessionCookies(response, request, data.accessToken, data.refreshToken);
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign-in failed";
-    const response = NextResponse.redirect(
+    if (wantsJson(request)) {
+      return NextResponse.json({ ok: false, error: message }, { status: 401 });
+    }
+    return NextResponse.redirect(
       new URL(
         `/sign-in?error=${encodeURIComponent(message)}&next=${encodeURIComponent(safeNext)}`,
         request.url,
       ),
       303,
     );
-    clearAuthCookiesOn(response);
-    return response;
   }
 }

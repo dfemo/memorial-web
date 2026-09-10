@@ -105,6 +105,30 @@ export function authCookieOptions(maxAge: number): CookieWriteOptions {
   };
 }
 
+/** Prefer request protocol so local http and Vercel https both keep the session. */
+export function authCookieOptionsForRequest(
+  request: Request,
+  maxAge: number,
+  overrides: Partial<CookieWriteOptions> = {},
+): CookieWriteOptions {
+  let secure = false;
+  try {
+    secure = new URL(request.url).protocol === "https:";
+  } catch {
+    secure = authCookieOptions(maxAge).secure === true;
+  }
+  if (process.env.COOKIE_SECURE === "true") secure = true;
+  if (process.env.COOKIE_SECURE === "false") secure = false;
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure,
+    maxAge,
+    ...overrides,
+  };
+}
+
 export async function getAccessToken(): Promise<string | undefined> {
   const jar = await cookies();
   return jar.get(ACCESS_COOKIE)?.value;

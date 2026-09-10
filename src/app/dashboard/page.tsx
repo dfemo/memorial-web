@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ApiError, apiV1, getAccessToken, type Memorial } from "@/lib/api-v1";
 
 export const metadata = { title: "Dashboard" };
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const token = await getAccessToken();

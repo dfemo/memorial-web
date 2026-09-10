@@ -29,12 +29,15 @@ export async function SiteHeader() {
           {loggedIn ? (
             <>
               <Link href="/dashboard">Dashboard</Link>
+              <Link href="/create" className="nav-cta">
+                Create a Memorial
+              </Link>
               <Link href="/api/session/logout">Sign out</Link>
             </>
           ) : (
             <>
               <Link href="/sign-in">Sign in</Link>
-              <Link href="/create" className="nav-cta">
+              <Link href="/sign-in?next=/create" className="nav-cta">
                 Create a Memorial
               </Link>
             </>
