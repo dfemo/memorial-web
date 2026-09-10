@@ -50,17 +50,19 @@ export default async function PublicMemorialPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; invite?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
   const tab = sp.tab || "home";
+  const invite = sp.invite?.trim() || "";
 
   let detail: MemorialDetail;
   try {
     const token = await getAccessToken();
+    const qs = invite ? `?invite=${encodeURIComponent(invite)}` : "";
     detail = await apiV1<MemorialDetail>(
-      `/api/v1/memorials/by-slug/${encodeURIComponent(slug)}`,
+      `/api/v1/memorials/by-slug/${encodeURIComponent(slug)}${qs}`,
       token ? { token } : { auth: false },
     );
   } catch (err) {
@@ -71,9 +73,10 @@ export default async function PublicMemorialPage({
       return (
         <div className="narrow-shell">
           <div className="soft-card">
-            <h1 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Private memorial</h1>
+            <h1 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Invite required</h1>
             <p style={{ color: "var(--muted)" }}>
-              This memorial is private. Sign in as the owner to view it.
+              This memorial is invite-only or private. Open the invite link shared by the family, or
+              sign in as the owner.
             </p>
             <Link href="/sign-in" className="btn btn-solid">
               Sign in

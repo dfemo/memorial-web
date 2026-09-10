@@ -67,11 +67,22 @@ export default async function DashboardPage() {
                   <span className="badge">{m.privacyLevel}</span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <Link href={`/memorial/${m.slug}`} className="btn btn-outline">
                   View
                 </Link>
-                <Link href={`/memorial/manage/${m.id}`} className="btn btn-solid">
+                {m.privacyLevel === "INVITE_ONLY" && (
+                  <Link
+                    href={`/memorial/manage/${m.id}#invite-links`}
+                    className="btn btn-solid"
+                  >
+                    Generate invite link
+                  </Link>
+                )}
+                <Link
+                  href={`/memorial/manage/${m.id}`}
+                  className={m.privacyLevel === "INVITE_ONLY" ? "btn btn-outline" : "btn btn-solid"}
+                >
                   Manage
                 </Link>
               </div>

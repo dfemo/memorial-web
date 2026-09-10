@@ -69,7 +69,7 @@ export function MemorialEditForm({ memorial }: { memorial: Memorial }) {
           Visibility
           <select name="privacyLevel" defaultValue={memorial.privacyLevel}>
             <option value="PUBLIC">Public — listed on Explore</option>
-            <option value="INVITE_ONLY">Unlisted — link only</option>
+            <option value="INVITE_ONLY">Invite only — share invite link</option>
             <option value="PRIVATE">Private — owner only</option>
           </select>
         </label>
@@ -87,8 +87,9 @@ export function MemorialEditForm({ memorial }: { memorial: Memorial }) {
       </div>
 
       <p style={{ color: "var(--muted)", fontSize: "0.9rem", margin: 0 }}>
-        To appear on Explore, set <strong>Published</strong> and <strong>Public</strong>. Unlisted
-        stays off Explore but the link still works. Private is owner-only.
+        To appear on Explore, set <strong>Published</strong> and <strong>Public</strong>. Invite
+        only stays off Explore — generate an invite link from Manage to share with family. Private is
+        owner-only.
       </p>
 
       <button className="btn btn-solid" type="submit">

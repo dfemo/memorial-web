@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { InviteLinkPanel } from "@/components/memorial/invite-link-panel";
 import { LegacyAiPanel } from "@/components/memorial/legacy-ai-panel";
 import { MemorialEditForm } from "@/components/memorial/memorial-edit-form";
 import {
@@ -90,7 +91,7 @@ export default async function ManageMemorialPage({
           {m.published && m.privacyLevel === "PUBLIC"
             ? " — this memorial can appear on Explore."
             : m.published && m.privacyLevel === "INVITE_ONLY"
-              ? " — unlisted: link works, not on Explore."
+              ? " — invite only: generate and share an invite link."
               : m.published && m.privacyLevel === "PRIVATE"
                 ? " — private: only you can view."
                 : " — draft: not publicly visible."}
@@ -119,6 +120,12 @@ export default async function ManageMemorialPage({
         </p>
         <MemorialEditForm memorial={m} />
       </section>
+
+      <InviteLinkPanel
+        memorialId={m.id}
+        privacyLevel={m.privacyLevel}
+        published={m.published}
+      />
 
       <LegacyAiPanel memorialId={m.id} />
     </div>
