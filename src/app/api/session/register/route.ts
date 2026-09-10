@@ -1,23 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  ACCESS_COOKIE,
-  REFRESH_COOKIE,
-  apiBase,
-  authCookieOptionsForRequest,
-} from "@/lib/api-v1";
-
-function setSessionCookies(
-  response: NextResponse,
-  request: Request,
-  accessToken: string,
-  refreshToken: string,
-) {
-  const accessOpts = authCookieOptionsForRequest(request, 60 * 60 * 8);
-  const refreshOpts = authCookieOptionsForRequest(request, 60 * 60 * 24 * 30);
-  response.cookies.set(ACCESS_COOKIE, accessToken, accessOpts);
-  response.cookies.set(REFRESH_COOKIE, refreshToken, refreshOpts);
-  response.cookies.set("er_auth", "1", { ...accessOpts, httpOnly: false });
-}
+import { apiBase, applySessionCookies, clearSessionCookies } from "@/lib/api-v1";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -55,13 +37,16 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
-    setSessionCookies(response, request, data.accessToken, data.refreshToken);
+    applySessionCookies(response, request, data.accessToken, data.refreshToken);
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign-up failed";
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       new URL(`/sign-up?error=${encodeURIComponent(message)}`, request.url),
       303,
     );
+    clearSessionCookies(response, request);
+    return response;
   }
 }

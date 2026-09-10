@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { clearAuthCookiesOn } from "@/lib/api-v1";
+import { clearSessionCookies } from "@/lib/api-v1";
 
-/** Keep old sign-out link working; prefer /api/session/logout. */
 export async function GET(request: Request) {
   const response = NextResponse.redirect(new URL("/", request.url), 303);
-  clearAuthCookiesOn(response);
+  clearSessionCookies(response, request);
   return response;
 }

@@ -1,43 +1,26 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
-  ACCESS_COOKIE,
   REFRESH_COOKIE,
   apiBase,
-  authCookieOptionsForRequest,
+  applySessionCookies,
+  clearSessionCookies,
 } from "@/lib/api-v1";
-
-function setSessionCookies(
-  response: NextResponse,
-  request: Request,
-  accessToken: string,
-  refreshToken: string,
-) {
-  const accessOpts = authCookieOptionsForRequest(request, 60 * 60 * 8);
-  const refreshOpts = authCookieOptionsForRequest(request, 60 * 60 * 24 * 30);
-  response.cookies.set(ACCESS_COOKIE, accessToken, accessOpts);
-  response.cookies.set(REFRESH_COOKIE, refreshToken, refreshOpts);
-  response.cookies.set("er_auth", "1", { ...accessOpts, httpOnly: false });
-}
-
-function clearSessionCookies(response: NextResponse, request: Request) {
-  const cleared = authCookieOptionsForRequest(request, 0);
-  response.cookies.set(ACCESS_COOKIE, "", cleared);
-  response.cookies.set(REFRESH_COOKIE, "", cleared);
-  response.cookies.set("er_auth", "", { ...cleared, httpOnly: false });
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const next = url.searchParams.get("next") || "/dashboard";
-  const safeNext = next.startsWith("/") ? next : "/dashboard";
+  let next = url.searchParams.get("next") || "/dashboard";
+  if (!next.startsWith("/")) next = "/dashboard";
+  // Mark destination so middleware does not immediately re-enter refresh.
+  const dest = new URL(next, request.url);
+  dest.searchParams.set("_sr", "1");
 
   const jar = await cookies();
   const refreshToken = jar.get(REFRESH_COOKIE)?.value;
 
   if (!refreshToken) {
     const response = NextResponse.redirect(
-      new URL(`/sign-in?next=${encodeURIComponent(safeNext)}`, request.url),
+      new URL(`/sign-in?next=${encodeURIComponent(next)}`, request.url),
     );
     clearSessionCookies(response, request);
     return response;
@@ -59,7 +42,7 @@ export async function GET(request: Request) {
     if (!res.ok || !data.accessToken || !data.refreshToken) {
       const response = NextResponse.redirect(
         new URL(
-          `/sign-in?next=${encodeURIComponent(safeNext)}&error=${encodeURIComponent(data.error || "Session expired")}`,
+          `/sign-in?next=${encodeURIComponent(next)}&error=${encodeURIComponent(data.error || "Session expired")}`,
           request.url,
         ),
       );
@@ -67,13 +50,14 @@ export async function GET(request: Request) {
       return response;
     }
 
-    const response = NextResponse.redirect(new URL(safeNext, request.url));
-    setSessionCookies(response, request, data.accessToken, data.refreshToken);
+    const response = NextResponse.redirect(dest);
+    applySessionCookies(response, request, data.accessToken, data.refreshToken);
+    response.headers.set("Cache-Control", "no-store");
     return response;
   } catch {
     const response = NextResponse.redirect(
       new URL(
-        `/sign-in?next=${encodeURIComponent(safeNext)}&error=${encodeURIComponent("Could not refresh session")}`,
+        `/sign-in?next=${encodeURIComponent(next)}&error=${encodeURIComponent("Could not refresh session")}`,
         request.url,
       ),
     );

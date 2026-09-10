@@ -1,19 +1,30 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { ACCESS_COOKIE, REFRESH_COOKIE, apiV1, getAccessToken } from "@/lib/api-v1";
+import {
+  ACCESS_COOKIE,
+  ACTIVITY_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_IDLE_MS,
+  apiV1,
+  getAccessToken,
+} from "@/lib/api-v1";
 import { getPublicSiteConfig } from "@/lib/site-config";
 
 export async function SiteHeader() {
   const config = await getPublicSiteConfig();
   const jar = await cookies();
-  // Prefer cookie presence for nav — avoid hiding Dashboard when /me briefly fails.
-  let loggedIn = Boolean(jar.get(ACCESS_COOKIE)?.value || jar.get(REFRESH_COOKIE)?.value);
+  const activity = Number(jar.get(ACTIVITY_COOKIE)?.value || 0);
+  const idleExpired = activity > 0 && Date.now() - activity > SESSION_IDLE_MS;
+  let loggedIn =
+    !idleExpired &&
+    Boolean(jar.get(ACCESS_COOKIE)?.value || jar.get(REFRESH_COOKIE)?.value);
+
   if (loggedIn) {
     try {
       const token = await getAccessToken();
       if (token) await apiV1("/api/v1/auth/me", { token });
     } catch {
-      // Keep logged-in nav if refresh cookie still exists; dashboard will recover/refresh.
+      // Keep nav if cookies still present; middleware/refresh will recover.
     }
   }
 

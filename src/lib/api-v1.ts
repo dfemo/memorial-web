@@ -1,15 +1,22 @@
 import { cookies } from "next/headers";
+import {
+  ACCESS_COOKIE,
+  ACTIVITY_COOKIE,
+  AUTH_FLAG_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_IDLE_SECONDS,
+  sessionCookieOptions,
+  type CookieWriteOptions,
+} from "@/lib/session";
 
-export const ACCESS_COOKIE = "er_access";
-export const REFRESH_COOKIE = "er_refresh";
-
-type CookieWriteOptions = {
-  httpOnly?: boolean;
-  sameSite?: "lax" | "strict" | "none";
-  path?: string;
-  secure?: boolean;
-  maxAge?: number;
-};
+export {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  AUTH_FLAG_COOKIE as AUTH_HINT_COOKIE,
+  ACTIVITY_COOKIE,
+  SESSION_IDLE_SECONDS,
+  SESSION_IDLE_MS,
+} from "@/lib/session";
 
 export type ApiUser = {
   id: string;
@@ -90,44 +97,18 @@ export function apiBase() {
   return base.replace(/\/$/, "");
 }
 
+/** @deprecated use sessionCookieOptions */
 export function authCookieOptions(maxAge: number): CookieWriteOptions {
-  const secure =
-    process.env.COOKIE_SECURE === "true" ||
-    process.env.VERCEL === "1" ||
-    process.env.AUTH_URL?.startsWith("https://") === true ||
-    process.env.NEXTAUTH_URL?.startsWith("https://") === true;
-  return {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure,
-    maxAge,
-  };
+  return sessionCookieOptions({ url: "https://local" }, maxAge);
 }
 
-/** Prefer request protocol so local http and Vercel https both keep the session. */
+/** @deprecated use sessionCookieOptions */
 export function authCookieOptionsForRequest(
   request: Request,
   maxAge: number,
   overrides: Partial<CookieWriteOptions> = {},
 ): CookieWriteOptions {
-  let secure = false;
-  try {
-    secure = new URL(request.url).protocol === "https:";
-  } catch {
-    secure = authCookieOptions(maxAge).secure === true;
-  }
-  if (process.env.COOKIE_SECURE === "true") secure = true;
-  if (process.env.COOKIE_SECURE === "false") secure = false;
-  if (process.env.VERCEL === "1") secure = true;
-  return {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure,
-    maxAge,
-    ...overrides,
-  };
+  return sessionCookieOptions(request, maxAge, overrides);
 }
 
 export async function getAccessToken(): Promise<string | undefined> {
@@ -140,33 +121,77 @@ export async function getRefreshToken(): Promise<string | undefined> {
   return jar.get(REFRESH_COOKIE)?.value;
 }
 
+export function applySessionCookies(
+  target: {
+    cookies: {
+      set: (name: string, value: string, options?: CookieWriteOptions) => void;
+    };
+  },
+  request: Request,
+  accessToken: string,
+  refreshToken: string,
+) {
+  const opts = sessionCookieOptions(request, SESSION_IDLE_SECONDS);
+  target.cookies.set(ACCESS_COOKIE, accessToken, opts);
+  target.cookies.set(REFRESH_COOKIE, refreshToken, opts);
+  target.cookies.set(AUTH_FLAG_COOKIE, "1", { ...opts, httpOnly: false });
+  target.cookies.set(ACTIVITY_COOKIE, String(Date.now()), { ...opts, httpOnly: false });
+}
+
+export function clearSessionCookies(
+  target: {
+    cookies: {
+      set: (name: string, value: string, options?: CookieWriteOptions) => void;
+    };
+  },
+  request: Request,
+) {
+  const cleared = sessionCookieOptions(request, 0);
+  target.cookies.set(ACCESS_COOKIE, "", cleared);
+  target.cookies.set(REFRESH_COOKIE, "", cleared);
+  target.cookies.set(AUTH_FLAG_COOKIE, "", { ...cleared, httpOnly: false });
+  target.cookies.set(ACTIVITY_COOKIE, "", { ...cleared, httpOnly: false });
+}
+
+/** @deprecated */
+export function applyAuthCookies(
+  target: {
+    cookies: {
+      set: (name: string, value: string, options?: CookieWriteOptions) => void;
+    };
+  },
+  accessToken: string,
+  refreshToken: string,
+) {
+  applySessionCookies(target, { url: "https://local" } as Request, accessToken, refreshToken);
+}
+
+/** @deprecated */
+export function clearAuthCookiesOn(
+  target: {
+    cookies: {
+      set: (name: string, value: string, options?: CookieWriteOptions) => void;
+    };
+  },
+) {
+  clearSessionCookies(target, { url: "https://local" } as Request);
+}
+
 export async function setAuthCookies(accessToken: string, refreshToken: string) {
   const jar = await cookies();
-  jar.set(ACCESS_COOKIE, accessToken, authCookieOptions(60 * 60 * 8));
-  jar.set(REFRESH_COOKIE, refreshToken, authCookieOptions(60 * 60 * 24 * 30));
+  const opts = sessionCookieOptions({ url: process.env.AUTH_URL || "https://local" }, SESSION_IDLE_SECONDS);
+  jar.set(ACCESS_COOKIE, accessToken, opts);
+  jar.set(REFRESH_COOKIE, refreshToken, opts);
+  jar.set(AUTH_FLAG_COOKIE, "1", { ...opts, httpOnly: false });
+  jar.set(ACTIVITY_COOKIE, String(Date.now()), { ...opts, httpOnly: false });
 }
 
 export async function clearAuthCookies() {
   const jar = await cookies();
   jar.delete(ACCESS_COOKIE);
   jar.delete(REFRESH_COOKIE);
-}
-
-export function applyAuthCookies(
-  target: { cookies: { set: (name: string, value: string, options?: CookieWriteOptions) => void } },
-  accessToken: string,
-  refreshToken: string,
-) {
-  target.cookies.set(ACCESS_COOKIE, accessToken, authCookieOptions(60 * 60 * 8));
-  target.cookies.set(REFRESH_COOKIE, refreshToken, authCookieOptions(60 * 60 * 24 * 30));
-}
-
-export function clearAuthCookiesOn(
-  target: { cookies: { set: (name: string, value: string, options?: CookieWriteOptions) => void } },
-) {
-  const cleared = { ...authCookieOptions(0), maxAge: 0 };
-  target.cookies.set(ACCESS_COOKIE, "", cleared);
-  target.cookies.set(REFRESH_COOKIE, "", cleared);
+  jar.delete(AUTH_FLAG_COOKIE);
+  jar.delete(ACTIVITY_COOKIE);
 }
 
 export async function apiV1<T>(
