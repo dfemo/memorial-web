@@ -4,42 +4,37 @@ import type { NextRequest } from "next/server";
 const ACCESS = "er_access";
 const REFRESH = "er_refresh";
 
-const PROTECTED = ["/dashboard", "/create", "/memorial/manage"];
-
 export function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
+  const { pathname } = request.nextUrl;
   const hasAccess = Boolean(request.cookies.get(ACCESS)?.value);
   const hasRefresh = Boolean(request.cookies.get(REFRESH)?.value);
 
+  // Never auto-bounce away from auth pages — prevents refresh/sign-in loops.
   if (pathname === "/sign-in" || pathname === "/sign-up") {
-    const next = searchParams.get("next");
-    const dest = next && next.startsWith("/") ? next : "/dashboard";
-    if (hasAccess) {
-      return NextResponse.redirect(new URL(dest, request.url));
-    }
-    if (hasRefresh) {
-      return NextResponse.redirect(
-        new URL(`/api/session/refresh?next=${encodeURIComponent(dest)}`, request.url),
-      );
-    }
     return NextResponse.next();
   }
 
-  const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (needsAuth && !hasAccess && !hasRefresh) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+  const needsAuth =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/create" ||
+    pathname.startsWith("/memorial/manage/");
+
+  if (!needsAuth) return NextResponse.next();
+
+  if (hasAccess) return NextResponse.next();
+
+  if (hasRefresh) {
+    const refreshUrl = request.nextUrl.clone();
+    refreshUrl.pathname = "/api/session/refresh";
+    refreshUrl.search = `?next=${encodeURIComponent(pathname + request.nextUrl.search)}`;
+    return NextResponse.redirect(refreshUrl);
   }
 
-  if (needsAuth && !hasAccess && hasRefresh) {
-    return NextResponse.redirect(
-      new URL(`/api/session/refresh?next=${encodeURIComponent(pathname)}`, request.url),
-    );
-  }
-
-  return NextResponse.next();
+  const signIn = request.nextUrl.clone();
+  signIn.pathname = "/sign-in";
+  signIn.search = `?next=${encodeURIComponent(pathname)}`;
+  return NextResponse.redirect(signIn);
 }
 
 export const config = {

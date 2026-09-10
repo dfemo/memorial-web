@@ -86,9 +86,9 @@ export default async function CreateMemorialPage({
           <label>
             Privacy
             <select name="privacyLevel" defaultValue="PUBLIC">
-              <option value="PUBLIC">Public</option>
-              <option value="INVITE_ONLY">Invite only</option>
-              <option value="PRIVATE">Private</option>
+              <option value="PUBLIC">Public — listed on Explore</option>
+              <option value="INVITE_ONLY">Unlisted — link only</option>
+              <option value="PRIVATE">Private — owner only</option>
             </select>
           </label>
           <input type="hidden" name="publish" value="true" />

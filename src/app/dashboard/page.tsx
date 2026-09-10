@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const token = await getAccessToken();
   const refresh = await getRefreshToken();
+
   if (!token && refresh) {
     redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
   }
@@ -19,7 +20,8 @@ export default async function DashboardPage() {
   try {
     memorials = await apiV1<Memorial[]>("/api/v1/memorials/mine");
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401 && refresh) {
+    // Spring often returns 403 for unauthenticated/expired JWT — treat like 401.
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403) && refresh) {
       redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
     }
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {

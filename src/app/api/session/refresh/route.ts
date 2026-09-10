@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   ACCESS_COOKIE,
@@ -12,39 +13,41 @@ function setSessionCookies(
   accessToken: string,
   refreshToken: string,
 ) {
-  response.cookies.set(ACCESS_COOKIE, accessToken, authCookieOptionsForRequest(request, 60 * 60 * 8));
-  response.cookies.set(
-    REFRESH_COOKIE,
-    refreshToken,
-    authCookieOptionsForRequest(request, 60 * 60 * 24 * 30),
-  );
-  response.cookies.set(
-    "er_auth",
-    "1",
-    authCookieOptionsForRequest(request, 60 * 60 * 8, { httpOnly: false }),
-  );
+  const accessOpts = authCookieOptionsForRequest(request, 60 * 60 * 8);
+  const refreshOpts = authCookieOptionsForRequest(request, 60 * 60 * 24 * 30);
+  response.cookies.set(ACCESS_COOKIE, accessToken, accessOpts);
+  response.cookies.set(REFRESH_COOKIE, refreshToken, refreshOpts);
+  response.cookies.set("er_auth", "1", { ...accessOpts, httpOnly: false });
+}
+
+function clearSessionCookies(response: NextResponse, request: Request) {
+  const cleared = authCookieOptionsForRequest(request, 0);
+  response.cookies.set(ACCESS_COOKIE, "", cleared);
+  response.cookies.set(REFRESH_COOKIE, "", cleared);
+  response.cookies.set("er_auth", "", { ...cleared, httpOnly: false });
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const next = url.searchParams.get("next") || "/dashboard";
   const safeNext = next.startsWith("/") ? next : "/dashboard";
-  const refreshToken = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((p) => p.trim())
-    .find((p) => p.startsWith(`${REFRESH_COOKIE}=`))
-    ?.slice(REFRESH_COOKIE.length + 1);
+
+  const jar = await cookies();
+  const refreshToken = jar.get(REFRESH_COOKIE)?.value;
 
   if (!refreshToken) {
-    return NextResponse.redirect(new URL(`/sign-in?next=${encodeURIComponent(safeNext)}`, request.url));
+    const response = NextResponse.redirect(
+      new URL(`/sign-in?next=${encodeURIComponent(safeNext)}`, request.url),
+    );
+    clearSessionCookies(response, request);
+    return response;
   }
 
   try {
     const res = await fetch(`${apiBase()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken: decodeURIComponent(refreshToken) }),
+      body: JSON.stringify({ refreshToken }),
       cache: "no-store",
     });
     const data = (await res.json().catch(() => ({}))) as {
@@ -52,6 +55,7 @@ export async function GET(request: Request) {
       refreshToken?: string;
       error?: string;
     };
+
     if (!res.ok || !data.accessToken || !data.refreshToken) {
       const response = NextResponse.redirect(
         new URL(
@@ -59,9 +63,7 @@ export async function GET(request: Request) {
           request.url,
         ),
       );
-      response.cookies.set(ACCESS_COOKIE, "", authCookieOptionsForRequest(request, 0));
-      response.cookies.set(REFRESH_COOKIE, "", authCookieOptionsForRequest(request, 0));
-      response.cookies.set("er_auth", "", authCookieOptionsForRequest(request, 0, { httpOnly: false }));
+      clearSessionCookies(response, request);
       return response;
     }
 
@@ -69,11 +71,13 @@ export async function GET(request: Request) {
     setSessionCookies(response, request, data.accessToken, data.refreshToken);
     return response;
   } catch {
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       new URL(
         `/sign-in?next=${encodeURIComponent(safeNext)}&error=${encodeURIComponent("Could not refresh session")}`,
         request.url,
       ),
     );
+    clearSessionCookies(response, request);
+    return response;
   }
 }

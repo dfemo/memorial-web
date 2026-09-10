@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ApiError, apiV1, type MemorialDetail } from "@/lib/api-v1";
+import { ApiError, apiV1, getAccessToken, type MemorialDetail } from "@/lib/api-v1";
 import { TributeForm } from "@/components/memorial/tribute-form";
 
 export const dynamic = "force-dynamic";
@@ -58,12 +58,29 @@ export default async function PublicMemorialPage({
 
   let detail: MemorialDetail;
   try {
-    detail = await apiV1<MemorialDetail>(`/api/v1/memorials/by-slug/${encodeURIComponent(slug)}`, {
-      auth: false,
-    });
+    const token = await getAccessToken();
+    detail = await apiV1<MemorialDetail>(
+      `/api/v1/memorials/by-slug/${encodeURIComponent(slug)}`,
+      token ? { token } : { auth: false },
+    );
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       notFound();
+    }
+    if (err instanceof ApiError && err.status === 403) {
+      return (
+        <div className="narrow-shell">
+          <div className="soft-card">
+            <h1 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Private memorial</h1>
+            <p style={{ color: "var(--muted)" }}>
+              This memorial is private. Sign in as the owner to view it.
+            </p>
+            <Link href="/sign-in" className="btn btn-solid">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      );
     }
     const message =
       err instanceof Error

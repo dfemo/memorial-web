@@ -6,28 +6,17 @@ import {
   authCookieOptionsForRequest,
 } from "@/lib/api-v1";
 
-function wantsJson(request: Request) {
-  const accept = request.headers.get("accept") || "";
-  return accept.includes("application/json");
-}
-
 function setSessionCookies(
   response: NextResponse,
   request: Request,
   accessToken: string,
   refreshToken: string,
 ) {
-  response.cookies.set(ACCESS_COOKIE, accessToken, authCookieOptionsForRequest(request, 60 * 60 * 8));
-  response.cookies.set(
-    REFRESH_COOKIE,
-    refreshToken,
-    authCookieOptionsForRequest(request, 60 * 60 * 24 * 30),
-  );
-  response.cookies.set(
-    "er_auth",
-    "1",
-    authCookieOptionsForRequest(request, 60 * 60 * 8, { httpOnly: false }),
-  );
+  const accessOpts = authCookieOptionsForRequest(request, 60 * 60 * 8);
+  const refreshOpts = authCookieOptionsForRequest(request, 60 * 60 * 24 * 30);
+  response.cookies.set(ACCESS_COOKIE, accessToken, accessOpts);
+  response.cookies.set(REFRESH_COOKIE, refreshToken, refreshOpts);
+  response.cookies.set("er_auth", "1", { ...accessOpts, httpOnly: false });
 }
 
 export async function POST(request: Request) {
@@ -65,20 +54,11 @@ export async function POST(request: Request) {
       throw new Error(data.error || data.message || `Sign-up failed (${res.status})`);
     }
 
-    if (wantsJson(request)) {
-      const response = NextResponse.json({ ok: true, next: safeNext });
-      setSessionCookies(response, request, data.accessToken, data.refreshToken);
-      return response;
-    }
-
     const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
     setSessionCookies(response, request, data.accessToken, data.refreshToken);
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign-up failed";
-    if (wantsJson(request)) {
-      return NextResponse.json({ ok: false, error: message }, { status: 400 });
-    }
     return NextResponse.redirect(
       new URL(`/sign-up?error=${encodeURIComponent(message)}`, request.url),
       303,
