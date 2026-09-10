@@ -29,7 +29,7 @@ export async function SiteHeader() {
           {loggedIn ? (
             <>
               <Link href="/dashboard">Dashboard</Link>
-              <Link href="/api/auth/logout">Sign out</Link>
+              <Link href="/api/session/logout">Sign out</Link>
             </>
           ) : (
             <>

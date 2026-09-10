@@ -1,18 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { apiV1, getAccessToken, type Memorial } from "@/lib/api-v1";
+import { ApiError, apiV1, getAccessToken, type Memorial } from "@/lib/api-v1";
 
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const token = await getAccessToken();
-  if (!token) redirect("/sign-in");
+  if (!token) redirect("/sign-in?next=/dashboard");
 
   let memorials: Memorial[] = [];
+  let loadError: string | null = null;
+
   try {
     memorials = await apiV1<Memorial[]>("/api/v1/memorials/mine");
-  } catch {
-    redirect("/sign-in");
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+      redirect("/sign-in?next=/dashboard&error=" + encodeURIComponent("Session expired. Please sign in again."));
+    }
+    loadError = err instanceof Error ? err.message : "Could not load memorials.";
   }
 
   return (
@@ -27,10 +32,21 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      {loadError && (
+        <p
+          role="alert"
+          className="soft-card"
+          style={{ marginTop: "1.25rem", color: "#7a2e2e" }}
+        >
+          {loadError}
+        </p>
+      )}
+
       <div className="soft-card" style={{ marginTop: "1.25rem" }}>
-        {memorials.length === 0 ? (
+        {!loadError && memorials.length === 0 ? (
           <p style={{ color: "var(--muted)", margin: 0 }}>
-            No memorials yet. Start with a name, a photo, and a few words of love.
+            No memorials yet. Start with a name, a photo, and a few words of love.{" "}
+            <Link href="/create">Create a memorial</Link>.
           </p>
         ) : (
           memorials.map((m) => (

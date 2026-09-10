@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { registerAction } from "@/app/ever-actions";
 
 export const metadata = { title: "Sign up" };
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; next?: string }>;
+}) {
+  const sp = await searchParams;
+  const next = sp.next && sp.next.startsWith("/") ? sp.next : "/create";
+
   return (
     <div className="auth-shell">
       <div className="soft-card">
@@ -11,7 +17,22 @@ export default function SignUpPage() {
         <p style={{ color: "var(--muted)" }}>
           Create an account to publish a memorial and invite family.
         </p>
-        <form className="form-stack" action={registerAction}>
+        {sp.error && (
+          <p
+            role="alert"
+            style={{
+              background: "rgba(140, 40, 40, 0.08)",
+              color: "#7a2e2e",
+              padding: "0.75rem 1rem",
+              borderRadius: "0.5rem",
+              marginBottom: "1rem",
+            }}
+          >
+            {sp.error}
+          </p>
+        )}
+        <form className="form-stack" action="/api/session/register" method="post">
+          <input type="hidden" name="next" value={next} />
           <div style={{ display: "grid", gap: "0.9rem", gridTemplateColumns: "1fr 1fr" }}>
             <label>
               First name
@@ -24,11 +45,11 @@ export default function SignUpPage() {
           </div>
           <label>
             Email
-            <input name="email" type="email" required />
+            <input name="email" type="email" required autoComplete="email" />
           </label>
           <label>
             Password
-            <input name="password" type="password" required minLength={8} />
+            <input name="password" type="password" required minLength={8} autoComplete="new-password" />
           </label>
           <button className="btn btn-solid" type="submit">
             Create account

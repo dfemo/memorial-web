@@ -5,9 +5,14 @@ import { getAccessToken } from "@/lib/api-v1";
 
 export const metadata = { title: "Create a memorial" };
 
-export default async function CreateMemorialPage() {
+export default async function CreateMemorialPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const token = await getAccessToken();
-  if (!token) redirect("/sign-up?next=/create");
+  if (!token) redirect("/sign-in?next=/create");
+  const sp = await searchParams;
 
   return (
     <div className="narrow-shell">
@@ -15,6 +20,11 @@ export default async function CreateMemorialPage() {
       <p style={{ color: "var(--muted)" }}>
         A guided flow to publish a peaceful place for remembrance. You can refine details anytime.
       </p>
+      {sp.error && (
+        <p role="alert" style={{ color: "#7a2e2e", marginBottom: "1rem" }}>
+          {sp.error}
+        </p>
+      )}
       <div className="wizard-steps">
         <span className="on">1 Basics</span>
         <span className="on">2 Photos</span>
