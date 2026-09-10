@@ -119,6 +119,7 @@ export function authCookieOptionsForRequest(
   }
   if (process.env.COOKIE_SECURE === "true") secure = true;
   if (process.env.COOKIE_SECURE === "false") secure = false;
+  if (process.env.VERCEL === "1") secure = true;
   return {
     httpOnly: true,
     sameSite: "lax",

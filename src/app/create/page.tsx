@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createMemorialAction } from "@/app/ever-actions";
-import { getAccessToken } from "@/lib/api-v1";
+import { getAccessToken, getRefreshToken } from "@/lib/api-v1";
 
 export const metadata = { title: "Create a memorial" };
 export const dynamic = "force-dynamic";
@@ -12,6 +12,10 @@ export default async function CreateMemorialPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const token = await getAccessToken();
+  const refresh = await getRefreshToken();
+  if (!token && refresh) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent("/create")}`);
+  }
   if (!token) redirect("/sign-in?next=/create");
   const sp = await searchParams;
 

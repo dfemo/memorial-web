@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function SignUpForm({ nextPath = "/create" }: { nextPath?: string }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -18,17 +16,21 @@ export function SignUpForm({ nextPath = "/create" }: { nextPath?: string }) {
       const res = await fetch("/api/session/register", {
         method: "POST",
         body,
-        credentials: "same-origin",
+        credentials: "include",
         headers: { Accept: "application/json" },
+        cache: "no-store",
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        ok?: boolean;
+        next?: string;
+      };
       if (!res.ok || !data.ok) {
         setError(data.error || `Sign-up failed (${res.status})`);
         setPending(false);
         return;
       }
-      router.replace(nextPath);
-      router.refresh();
+      window.location.assign(data.next || nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-up failed");
       setPending(false);

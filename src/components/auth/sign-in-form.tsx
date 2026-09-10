@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function SignInForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -13,23 +11,27 @@ export function SignInForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const form = e.currentTarget;
-    const body = new FormData(form);
+    const body = new FormData(e.currentTarget);
     try {
       const res = await fetch("/api/session/login", {
         method: "POST",
         body,
-        credentials: "same-origin",
+        credentials: "include",
         headers: { Accept: "application/json" },
+        cache: "no-store",
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        ok?: boolean;
+        next?: string;
+      };
       if (!res.ok || !data.ok) {
         setError(data.error || `Sign-in failed (${res.status})`);
         setPending(false);
         return;
       }
-      router.replace(nextPath);
-      router.refresh();
+      // Hard navigation so the browser always sends the new session cookies.
+      window.location.assign(data.next || nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
       setPending(false);

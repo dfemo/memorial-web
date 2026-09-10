@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LegacyAiPanel } from "@/components/memorial/legacy-ai-panel";
 import { MemorialEditForm } from "@/components/memorial/memorial-edit-form";
-import { apiV1, getAccessToken, type MemorialDetail } from "@/lib/api-v1";
+import { apiV1, getAccessToken, getRefreshToken, type MemorialDetail } from "@/lib/api-v1";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,12 @@ export default async function ManageMemorialPage({
   params: Promise<{ id: string }>;
 }) {
   const token = await getAccessToken();
-  if (!token) redirect("/sign-in?next=/dashboard");
+  const refresh = await getRefreshToken();
   const { id } = await params;
+  if (!token && refresh) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
+  }
+  if (!token) redirect(`/sign-in?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
 
   let detail: MemorialDetail;
   try {

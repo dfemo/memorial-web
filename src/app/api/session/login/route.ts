@@ -17,7 +17,11 @@ function setSessionCookies(
   accessToken: string,
   refreshToken: string,
 ) {
-  response.cookies.set(ACCESS_COOKIE, accessToken, authCookieOptionsForRequest(request, 60 * 60 * 8));
+  response.cookies.set(
+    ACCESS_COOKIE,
+    accessToken,
+    authCookieOptionsForRequest(request, 60 * 60 * 8),
+  );
   response.cookies.set(
     REFRESH_COOKIE,
     refreshToken,
@@ -61,13 +65,14 @@ export async function POST(request: Request) {
       throw new Error(data.error || data.message || `Sign-in failed (${res.status})`);
     }
 
-    if (wantsJson(request)) {
-      const response = NextResponse.json({ ok: true, next: safeNext });
+    // Prefer a full redirect response so browsers always persist Set-Cookie.
+    if (!wantsJson(request)) {
+      const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
       setSessionCookies(response, request, data.accessToken, data.refreshToken);
       return response;
     }
 
-    const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
+    const response = NextResponse.json({ ok: true, next: safeNext });
     setSessionCookies(response, request, data.accessToken, data.refreshToken);
     return response;
   } catch (err) {

@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ApiError, apiV1, getAccessToken, type Memorial } from "@/lib/api-v1";
+import { ApiError, apiV1, getAccessToken, getRefreshToken, type Memorial } from "@/lib/api-v1";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const token = await getAccessToken();
+  const refresh = await getRefreshToken();
+  if (!token && refresh) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
+  }
   if (!token) redirect("/sign-in?next=/dashboard");
 
   let memorials: Memorial[] = [];
@@ -15,8 +19,14 @@ export default async function DashboardPage() {
   try {
     memorials = await apiV1<Memorial[]>("/api/v1/memorials/mine");
   } catch (err) {
+    if (err instanceof ApiError && err.status === 401 && refresh) {
+      redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
+    }
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-      redirect("/sign-in?next=/dashboard&error=" + encodeURIComponent("Session expired. Please sign in again."));
+      redirect(
+        "/sign-in?next=/dashboard&error=" +
+          encodeURIComponent("Session expired. Please sign in again."),
+      );
     }
     loadError = err instanceof Error ? err.message : "Could not load memorials.";
   }
@@ -34,11 +44,7 @@ export default async function DashboardPage() {
       </div>
 
       {loadError && (
-        <p
-          role="alert"
-          className="soft-card"
-          style={{ marginTop: "1.25rem", color: "#7a2e2e" }}
-        >
+        <p role="alert" className="soft-card" style={{ marginTop: "1.25rem", color: "#7a2e2e" }}>
           {loadError}
         </p>
       )}
