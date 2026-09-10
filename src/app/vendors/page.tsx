@@ -1,21 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getAccessToken } from "@/lib/api-v1";
 import { getPublicSiteConfig } from "@/lib/site-config";
 
 export const metadata = { title: "Vendors" };
+export const dynamic = "force-dynamic";
 
 export default async function VendorsPage() {
   const config = await getPublicSiteConfig();
   if (!config.showVendorDirectory) redirect("/");
 
-  let session = null;
-  try {
-    session = await auth();
-  } catch {
-    /* ignore */
-  }
-
+  const token = await getAccessToken();
   const vendors = config.vendors;
   const apiDown = config.source === "fallback";
 
@@ -24,20 +19,26 @@ export default async function VendorsPage() {
       <div className="wrap">
         <h2>{config.vendorsTitle}</h2>
         <p className="lede">{config.vendorsLede}</p>
-        {session?.user && (
-          <p style={{ marginBottom: "1.5rem" }}>
-            <Link href="/dashboard/vendor" className="btn btn-solid">
-              Register as a vendor
-            </Link>{" "}
-            <Link href="/dashboard/requests/new" className="btn btn-outline">
-              Request a service
+        <p style={{ marginBottom: "1.5rem" }}>
+          {token ? (
+            <>
+              <Link href="/dashboard/vendor" className="btn btn-solid">
+                Vendor dashboard
+              </Link>{" "}
+              <Link href="/dashboard/requests/new" className="btn btn-outline">
+                Request a service
+              </Link>
+            </>
+          ) : (
+            <Link href="/sign-in?next=/dashboard/vendor" className="btn btn-solid">
+              Sign in to register as a vendor
             </Link>
-          </p>
-        )}
+          )}
+        </p>
         {apiDown && (
           <div className="panel" style={{ marginBottom: "1rem" }}>
             <p style={{ margin: 0, color: "var(--muted)" }}>
-              Connect PLATFORM_API_URL to load the live vendor directory and admin-managed copy.
+              Connect PLATFORM_API_URL to load the live vendor directory.
             </p>
           </div>
         )}
@@ -52,15 +53,16 @@ export default async function VendorsPage() {
                   Serves: {v.serviceArea}
                 </p>
               )}
-              {session?.user && (
-                <Link
-                  href={`/dashboard/requests/new?vendorId=${v.id}`}
-                  className="btn btn-outline"
-                  style={{ marginTop: "0.8rem" }}
-                >
-                  Request this vendor
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.8rem" }}>
+                <Link href={`/vendors/${v.id}`} className="btn btn-outline">
+                  View profile
                 </Link>
-              )}
+                {token && (
+                  <Link href={`/dashboard/requests/new?vendorId=${v.id}`} className="btn btn-solid">
+                    Request
+                  </Link>
+                )}
+              </div>
             </div>
           ))}
         </div>

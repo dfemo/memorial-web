@@ -42,6 +42,7 @@ export async function SiteHeader() {
           {loggedIn ? (
             <>
               <Link href="/dashboard">Dashboard</Link>
+              <Link href="/dashboard/vendor">Vendor</Link>
               <Link href="/create" className="nav-cta">
                 Create a Memorial
               </Link>
