@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { ApiError, apiV1, clearAuthCookies } from "@/lib/api-v1";
@@ -27,11 +28,31 @@ export async function createMemorialAction(formData: FormData) {
   };
 
   try {
-    const memorial = await apiV1<{ id: string; slug: string }>("/api/v1/memorials", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    redirect(`/memorial/${memorial.slug}`);
+    const memorial = await apiV1<{ id: string; slug: string; published: boolean }>(
+      "/api/v1/memorials",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (!memorial?.slug) {
+      redirect(
+        `/create?error=${encodeURIComponent("Memorial was created but no public link was returned.")}`,
+      );
+    }
+
+    // Bust any cached 404 / listing for this slug.
+    revalidatePath(`/memorial/${memorial.slug}`);
+    revalidatePath("/browse");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+
+    // Prefer the public page when published; otherwise owner manage view.
+    if (memorial.published && privacy === "PUBLIC") {
+      redirect(`/memorial/${memorial.slug}`);
+    }
+    redirect(`/memorial/manage/${memorial.id}`);
   } catch (err) {
     if (isRedirectError(err)) throw err;
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {

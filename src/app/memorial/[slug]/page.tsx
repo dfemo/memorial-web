@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { apiV1, type MemorialDetail } from "@/lib/api-v1";
+import { ApiError, apiV1, type MemorialDetail } from "@/lib/api-v1";
 import { TributeForm } from "@/components/memorial/tribute-form";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function formatDate(d?: string | null) {
   if (!d) return null;
@@ -20,9 +23,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const detail = await apiV1<MemorialDetail>(`/api/v1/memorials/by-slug/${slug}`, {
-      auth: false,
-    });
+    const detail = await apiV1<MemorialDetail>(
+      `/api/v1/memorials/by-slug/${encodeURIComponent(slug)}`,
+      {
+        auth: false,
+      },
+    );
     const m = detail.memorial;
     const title = `In Loving Memory of ${m.displayName}`;
     return {
@@ -52,9 +58,38 @@ export default async function PublicMemorialPage({
 
   let detail: MemorialDetail;
   try {
-    detail = await apiV1<MemorialDetail>(`/api/v1/memorials/by-slug/${slug}`, { auth: false });
-  } catch {
-    notFound();
+    detail = await apiV1<MemorialDetail>(`/api/v1/memorials/by-slug/${encodeURIComponent(slug)}`, {
+      auth: false,
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Could not load this memorial from the platform API.";
+    return (
+      <div className="narrow-shell">
+        <div className="soft-card">
+          <h1 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Memorial unavailable</h1>
+          <p style={{ color: "var(--muted)" }}>{message}</p>
+          <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+            Slug: <code>{slug}</code>. If you just published it, confirm{" "}
+            <code>PLATFORM_API_URL</code> on Vercel points at your Railway API and that the API uses
+            persistent Postgres (not ephemeral H2).
+          </p>
+          <div className="cta-row" style={{ marginTop: "1rem" }}>
+            <Link href="/browse" className="btn btn-solid">
+              Explore memorials
+            </Link>
+            <Link href="/dashboard" className="btn btn-ghost">
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const m = detail.memorial;
