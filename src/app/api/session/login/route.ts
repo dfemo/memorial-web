@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  ACCESS_COOKIE,
-  REFRESH_COOKIE,
   apiBase,
   applySessionCookies,
   clearSessionCookies,
@@ -12,7 +10,7 @@ export async function POST(request: Request) {
   const email = String(form.get("email") || "").trim();
   const password = String(form.get("password") || "");
   const next = String(form.get("next") || "/dashboard");
-  const safeNext = next.startsWith("/") ? next : "/dashboard";
+  const requestedNext = next.startsWith("/") ? next : "/dashboard";
 
   try {
     let res: Response;
@@ -32,22 +30,30 @@ export async function POST(request: Request) {
       refreshToken?: string;
       error?: string;
       message?: string;
+      user?: { accountType?: string };
     };
 
     if (!res.ok || !data.accessToken || !data.refreshToken) {
       throw new Error(data.error || data.message || `Sign-in failed (${res.status})`);
     }
 
+    const isVendor = (data.user?.accountType || "OWNER").toUpperCase() === "VENDOR";
+    const safeNext =
+      isVendor && (requestedNext === "/dashboard" || requestedNext === "/create")
+        ? "/dashboard/vendor"
+        : !isVendor && requestedNext.startsWith("/dashboard/vendor")
+          ? "/dashboard"
+          : requestedNext;
+
     const response = NextResponse.redirect(new URL(safeNext, request.url), 303);
     applySessionCookies(response, request, data.accessToken, data.refreshToken);
-    // Prevent caches from storing authenticated landing pages.
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign-in failed";
     const response = NextResponse.redirect(
       new URL(
-        `/sign-in?error=${encodeURIComponent(message)}&next=${encodeURIComponent(safeNext)}`,
+        `/sign-in?error=${encodeURIComponent(message)}&next=${encodeURIComponent(requestedNext)}`,
         request.url,
       ),
       303,

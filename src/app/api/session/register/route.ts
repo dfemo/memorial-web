@@ -3,14 +3,27 @@ import { apiBase, applySessionCookies, clearSessionCookies } from "@/lib/api-v1"
 
 export async function POST(request: Request) {
   const form = await request.formData();
+  const accountTypeRaw = String(form.get("accountType") || "OWNER").trim().toUpperCase();
+  const accountType = accountTypeRaw === "VENDOR" ? "VENDOR" : "OWNER";
   const body = {
     firstName: String(form.get("firstName") || ""),
     lastName: String(form.get("lastName") || ""),
     email: String(form.get("email") || "").trim(),
     password: String(form.get("password") || ""),
+    accountType,
   };
-  const next = String(form.get("next") || "/create");
-  const safeNext = next.startsWith("/") ? next : "/create";
+  const requestedNext = String(form.get("next") || "");
+  const defaultNext = accountType === "VENDOR" ? "/dashboard/vendor" : "/create";
+  const next = requestedNext.startsWith("/") ? requestedNext : defaultNext;
+  // Owners shouldn't land on vendor workspace by accident; vendors shouldn't land on /create.
+  const safeNext =
+    accountType === "VENDOR"
+      ? next === "/create" || next === "/dashboard"
+        ? "/dashboard/vendor"
+        : next
+      : next.startsWith("/dashboard/vendor")
+        ? "/create"
+        : next;
 
   try {
     let res: Response;
@@ -42,8 +55,12 @@ export async function POST(request: Request) {
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign-up failed";
+    const asParam = accountType === "VENDOR" ? "&as=vendor" : "";
     const response = NextResponse.redirect(
-      new URL(`/sign-up?error=${encodeURIComponent(message)}`, request.url),
+      new URL(
+        `/sign-up?error=${encodeURIComponent(message)}&next=${encodeURIComponent(safeNext)}${asParam}`,
+        request.url,
+      ),
       303,
     );
     clearSessionCookies(response, request);

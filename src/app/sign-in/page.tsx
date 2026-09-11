@@ -15,7 +15,9 @@ export default async function SignInPage({
     <div className="auth-shell">
       <div className="soft-card">
         <h1 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Welcome back</h1>
-        <p style={{ color: "var(--muted)" }}>Sign in to create and manage memorials.</p>
+        <p style={{ color: "var(--muted)" }}>
+          Sign in as a memorial owner or vendor.
+        </p>
         {sp.error && (
           <p
             role="alert"
@@ -52,7 +54,10 @@ export default async function SignInPage({
           </button>
         </form>
         <p style={{ marginTop: "1rem" }}>
-          New here? <Link href="/sign-up">Create an account</Link>
+          New here?{" "}
+          <Link href={`/sign-up?next=${encodeURIComponent(next)}`}>Create an account</Link>
+          {" · "}
+          <Link href="/sign-up?as=vendor">Sign up as vendor</Link>
         </p>
       </div>
     </div>

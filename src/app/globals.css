@@ -210,6 +210,60 @@ a { color: inherit; text-decoration: none; }
 
 .form-stack { display: grid; gap: 0.9rem; }
 
+.account-type-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.account-type-field legend {
+  font-size: 0.92rem;
+  margin-bottom: 0.55rem;
+}
+
+.account-type-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.account-type-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.account-type-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.account-type-option input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+
+.account-type-option strong {
+  display: block;
+}
+
+.account-type-option small {
+  display: block;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .account-type-grid { grid-template-columns: 1fr; }
+}
+
 label { display: grid; gap: 0.35rem; font-size: 0.92rem; }
 
 input, textarea, select {

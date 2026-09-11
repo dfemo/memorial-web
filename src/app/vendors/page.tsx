@@ -30,9 +30,14 @@ export default async function VendorsPage() {
               </Link>
             </>
           ) : (
-            <Link href="/sign-in?next=/dashboard/vendor" className="btn btn-solid">
-              Sign in to register as a vendor
-            </Link>
+            <>
+              <Link href="/sign-up?as=vendor" className="btn btn-solid">
+                Sign up as a vendor
+              </Link>{" "}
+              <Link href="/sign-in?next=/dashboard/vendor" className="btn btn-outline">
+                Vendor sign in
+              </Link>
+            </>
           )}
         </p>
         {apiDown && (
