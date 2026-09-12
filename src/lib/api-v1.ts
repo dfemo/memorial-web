@@ -25,6 +25,8 @@ export type ApiUser = {
   email: string;
   role: string;
   plan: string;
+  accountType?: string;
+  emailVerified?: boolean;
   profileImage?: string | null;
 };
 

@@ -8,6 +8,8 @@ export type PublicVendor = {
   serviceArea?: string;
   pricingNotes?: string;
   status: string;
+  avgRating?: number;
+  ratingCount?: number;
 };
 
 export type PublicSiteConfig = {

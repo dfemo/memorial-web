@@ -52,6 +52,16 @@ export default async function VendorsPage() {
             <div key={v.id} className="price-panel">
               <span className="badge">{v.category}</span>
               <h3 style={{ marginTop: "0.6rem" }}>{v.businessName}</h3>
+              {(v.ratingCount ?? 0) > 0 ? (
+                <p style={{ margin: "0.35rem 0", fontSize: "0.95rem" }}>
+                  ★ {Number(v.avgRating || 0).toFixed(1)} · {v.ratingCount} rating
+                  {v.ratingCount === 1 ? "" : "s"}
+                </p>
+              ) : (
+                <p style={{ margin: "0.35rem 0", color: "var(--muted)", fontSize: "0.9rem" }}>
+                  No ratings yet
+                </p>
+              )}
               <p>{v.description || "Professional funeral services."}</p>
               {v.serviceArea && (
                 <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getAccessToken } from "@/lib/api-v1";
+import { normalizeCurrency } from "@/lib/currencies";
 import { platformFetch } from "@/lib/platform";
 
 async function requireToken() {
@@ -148,7 +149,7 @@ export async function requestPaymentAction(formData: FormData) {
       body: JSON.stringify({
         description: String(formData.get("description") || ""),
         amount: Number(formData.get("amount") || 0),
-        currency: String(formData.get("currency") || "USD"),
+        currency: normalizeCurrency(formData.get("currency")),
         requestId: formData.get("requestId") ? Number(formData.get("requestId")) : null,
       }),
       revalidate: false,
@@ -203,23 +204,54 @@ export async function lodgeComplaintAction(formData: FormData) {
 export async function addAccreditationAction(vendorId: number, formData: FormData) {
   try {
     const token = await getAccessToken();
+    if (!token) {
+      redirect(`/sign-in?next=${encodeURIComponent(`/vendors/${vendorId}`)}`);
+    }
     const res = await platformFetch(`/api/vendors/${vendorId}/accreditations`, {
       method: "POST",
-      token: token || undefined,
+      token,
       body: JSON.stringify({
-        viewerName: String(formData.get("viewerName") || "Guest"),
         rating: Number(formData.get("rating") || 5),
         comment: String(formData.get("comment") || ""),
       }),
       revalidate: false,
     });
     if (!res.ok) {
-      redirect(`/vendors/${vendorId}?error=${encodeURIComponent("Could not submit accreditation")}`);
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      const message =
+        body.error ||
+        (res.status === 403
+          ? "Verify your email before leaving a rating"
+          : "Could not submit accreditation");
+      redirect(`/vendors/${vendorId}?error=${encodeURIComponent(message)}`);
     }
     revalidatePath(`/vendors/${vendorId}`);
+    revalidatePath("/vendors");
     redirect(`/vendors/${vendorId}?accredited=1`);
   } catch (err) {
     if (isRedirectError(err)) throw err;
     redirect(`/vendors/${vendorId}?error=${encodeURIComponent("Could not submit accreditation")}`);
+  }
+}
+
+export async function resendVerificationAction(formData: FormData) {
+  const next = String(formData.get("next") || "/dashboard");
+  const safeNext = next.startsWith("/") ? next : "/dashboard";
+  try {
+    const token = await getAccessToken();
+    if (!token) redirect(`/sign-in?next=${encodeURIComponent(safeNext)}`);
+    const res = await platformFetch("/api/v1/auth/resend-verification", {
+      method: "POST",
+      token,
+      body: "{}",
+      revalidate: false,
+    });
+    if (!res.ok) {
+      redirect(`${safeNext}?error=${encodeURIComponent("Could not resend verification email")}`);
+    }
+    redirect(`${safeNext}?verifySent=1`);
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    redirect(`${safeNext}?error=${encodeURIComponent("Could not resend verification email")}`);
   }
 }

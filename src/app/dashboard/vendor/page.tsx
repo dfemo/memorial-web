@@ -22,6 +22,7 @@ import {
   type VendorComplaint,
   type VendorPayment,
 } from "@/lib/vendor-api";
+import { formatMoney } from "@/lib/currencies";
 
 export const metadata = { title: "Vendor dashboard" };
 export const dynamic = "force-dynamic";
@@ -268,9 +269,7 @@ export default async function VendorDashboardPage({
                   {payments.map((p) => (
                     <div className="list-row" key={p.id}>
                       <div>
-                        <strong>
-                          {p.currency} {p.amount.toFixed(2)}
-                        </strong>
+                        <strong>{formatMoney(p.amount, p.currency)}</strong>
                         <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
                           {p.description} · {p.kind || "ADMIN"}
                         </div>
@@ -298,7 +297,11 @@ export default async function VendorDashboardPage({
                     </label>
                     <label>
                       Currency
-                      <input name="currency" defaultValue="USD" />
+                      <select name="currency" defaultValue="USD">
+                        <option value="NGN">NGN — Nigerian Naira</option>
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="GBP">GBP — British Pound</option>
+                      </select>
                     </label>
                     <button className="btn btn-solid" type="submit">
                       Submit payment request

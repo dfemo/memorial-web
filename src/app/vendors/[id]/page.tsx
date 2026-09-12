@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addAccreditationAction } from "@/app/vendor-actions";
+import { addAccreditationAction, resendVerificationAction } from "@/app/vendor-actions";
+import { apiV1, getAccessToken, type ApiUser } from "@/lib/api-v1";
 import { platformFetch } from "@/lib/platform";
 import type { Accreditation, PortfolioItem, Vendor } from "@/lib/vendor-api";
 
@@ -11,7 +12,11 @@ export default async function VendorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ accredited?: string; error?: string }>;
+  searchParams: Promise<{
+    accredited?: string;
+    error?: string;
+    verifySent?: string;
+  }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -21,10 +26,24 @@ export default async function VendorDetailPage({
     vendor: Vendor;
     portfolio: PortfolioItem[];
     accreditations: Accreditation[];
+    avgRating?: number;
+    ratingCount?: number;
   };
 
   const v = data.vendor;
+  const avg = data.avgRating ?? 0;
+  const count = data.ratingCount ?? data.accreditations.length;
   const action = addAccreditationAction.bind(null, v.id);
+
+  const token = await getAccessToken();
+  let me: ApiUser | null = null;
+  if (token) {
+    try {
+      me = await apiV1<ApiUser>("/api/v1/auth/me", { token });
+    } catch {
+      me = null;
+    }
+  }
 
   return (
     <div className="narrow-shell">
@@ -34,6 +53,13 @@ export default async function VendorDetailPage({
       <span className="badge">{v.category}</span>
       <h1 style={{ fontFamily: "var(--font-display)" }}>{v.businessName}</h1>
       <p style={{ color: "var(--muted)" }}>{v.serviceArea}</p>
+      {count > 0 ? (
+        <p>
+          <strong>{avg.toFixed(1)}</strong> / 5 · {count} accreditation{count === 1 ? "" : "s"}
+        </p>
+      ) : (
+        <p style={{ color: "var(--muted)" }}>No ratings yet</p>
+      )}
       <p style={{ whiteSpace: "pre-wrap" }}>{v.description}</p>
       {v.pricingNotes && (
         <p style={{ color: "var(--muted)" }}>
@@ -49,7 +75,12 @@ export default async function VendorDetailPage({
 
       {sp.accredited && (
         <p role="status" className="soft-card" style={{ color: "var(--accent)" }}>
-          Thank you for your accreditation.
+          Thank you — your verified rating was saved.
+        </p>
+      )}
+      {sp.verifySent && (
+        <p role="status" className="soft-card" style={{ color: "var(--accent)" }}>
+          Verification email sent. Check your inbox.
         </p>
       )}
       {sp.error && (
@@ -80,43 +111,65 @@ export default async function VendorDetailPage({
       </section>
 
       <section className="soft-card" style={{ marginTop: "1.25rem" }}>
-        <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>Accreditations</h2>
+        <h2 style={{ fontFamily: "var(--font-display)", marginTop: 0 }}>
+          Accreditations & ratings
+        </h2>
         {data.accreditations.map((a) => (
           <div className="list-row" key={a.id}>
             <div>
-              <strong>{a.viewerName || "Viewer"}</strong> · {a.rating}/5
+              <strong>{a.viewerName || "Verified user"}</strong> · {a.rating}/5
               <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>{a.comment}</div>
             </div>
           </div>
         ))}
         {data.accreditations.length === 0 && (
-          <p style={{ color: "var(--muted)" }}>Be the first to leave an accreditation.</p>
+          <p style={{ color: "var(--muted)" }}>Be the first verified visitor to leave a rating.</p>
         )}
 
-        <h3 style={{ fontFamily: "var(--font-display)" }}>Leave an accreditation</h3>
-        <form className="form-stack" action={action}>
-          <label>
-            Your name
-            <input name="viewerName" required />
-          </label>
-          <label>
-            Rating
-            <select name="rating" defaultValue="5">
-              {[5, 4, 3, 2, 1].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Comment
-            <textarea name="comment" />
-          </label>
-          <button className="btn btn-solid" type="submit">
-            Submit accreditation
-          </button>
-        </form>
+        <h3 style={{ fontFamily: "var(--font-display)" }}>Rate this vendor</h3>
+        {!me ? (
+          <p style={{ color: "var(--muted)" }}>
+            Ratings are limited to signed-in, email-verified users to prevent spam.{" "}
+            <Link href={`/sign-in?next=${encodeURIComponent(`/vendors/${v.id}`)}`}>Sign in</Link>
+            {" · "}
+            <Link href={`/sign-up?next=${encodeURIComponent(`/vendors/${v.id}`)}`}>Create account</Link>
+          </p>
+        ) : !me.emailVerified ? (
+          <div>
+            <p style={{ color: "var(--muted)" }}>
+              Verify your email ({me.email}) before leaving a rating.
+            </p>
+            <form action={resendVerificationAction}>
+              <input type="hidden" name="next" value={`/vendors/${v.id}`} />
+              <button className="btn btn-solid" type="submit">
+                Resend verification email
+              </button>
+            </form>
+          </div>
+        ) : (
+          <form className="form-stack" action={action}>
+            <p style={{ color: "var(--muted)", margin: 0 }}>
+              Rating as <strong>{me.firstName} {me.lastName}</strong> (verified)
+            </p>
+            <label>
+              Rating
+              <select name="rating" defaultValue="5">
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n} star{n === 1 ? "" : "s"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Comment
+              <textarea name="comment" placeholder="Share your experience with this vendor" />
+            </label>
+            <button className="btn btn-solid" type="submit">
+              Submit accreditation
+            </button>
+          </form>
+        )}
       </section>
     </div>
   );
