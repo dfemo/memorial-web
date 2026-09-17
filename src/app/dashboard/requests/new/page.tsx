@@ -1,60 +1,64 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
-import { createPlatformJwt, platformFetch } from "@/lib/platform";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { apiV1, type ApiUser, type Memorial } from "@/lib/api-v1";
+import { platformFetch } from "@/lib/platform";
+import { requireAccessToken } from "@/lib/require-session";
 
 export const metadata = { title: "New service request" };
+export const dynamic = "force-dynamic";
 
 async function createRequest(formData: FormData) {
   "use server";
-  const session = await auth();
-  if (!session?.user?.id) redirect("/sign-in");
+  try {
+    const token = await requireAccessToken("/dashboard/requests/new");
+    const me = await apiV1<ApiUser>("/api/v1/auth/me", { token });
+    const payload = {
+      externalUserId: me.id,
+      clientEmail: me.email,
+      clientName: `${me.firstName} ${me.lastName}`.trim(),
+      memorialExternalId: String(formData.get("memorialId") || "") || null,
+      vendorId: formData.get("vendorId") ? Number(formData.get("vendorId")) : null,
+      title: String(formData.get("title") || ""),
+      category: String(formData.get("category") || "FUNERAL_HOME"),
+      notes: String(formData.get("notes") || ""),
+      obtainable: String(formData.get("obtainable") || ""),
+      budget: String(formData.get("budget") || ""),
+      preferredDate: String(formData.get("preferredDate") || "") || null,
+      location: String(formData.get("location") || ""),
+    };
 
-  const token = await createPlatformJwt({
-    sub: session.user.id,
-    email: session.user.email || "",
-    role: session.user.role,
-    name: session.user.name,
-  });
-
-  const payload = {
-    externalUserId: session.user.id,
-    clientEmail: session.user.email,
-    clientName: session.user.name,
-    memorialExternalId: String(formData.get("memorialId") || "") || null,
-    vendorId: formData.get("vendorId") ? Number(formData.get("vendorId")) : null,
-    title: String(formData.get("title") || ""),
-    category: String(formData.get("category") || "FUNERAL_HOME"),
-    notes: String(formData.get("notes") || ""),
-    obtainable: String(formData.get("obtainable") || ""),
-    budget: String(formData.get("budget") || ""),
-    preferredDate: String(formData.get("preferredDate") || "") || null,
-    location: String(formData.get("location") || ""),
-  };
-
-  await platformFetch("/api/requests", {
-    method: "POST",
-    token,
-    body: JSON.stringify(payload),
-  });
-
-  redirect("/dashboard/requests");
+    const res = await platformFetch("/api/requests", {
+      method: "POST",
+      token,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      redirect(
+        `/dashboard/requests/new?error=${encodeURIComponent("Could not create request")}`,
+      );
+    }
+    redirect("/dashboard/requests");
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    redirect(`/dashboard/requests/new?error=${encodeURIComponent("Could not create request")}`);
+  }
 }
 
 export default async function NewRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memorialId?: string; vendorId?: string }>;
+  searchParams: Promise<{ memorialId?: string; vendorId?: string; error?: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/sign-in");
+  await requireAccessToken("/dashboard/requests/new");
   const sp = await searchParams;
 
-  const memorials = await prisma.memorial.findMany({
-    where: { ownerId: session.user.id },
-    orderBy: { updatedAt: "desc" },
-  });
+  let memorials: Memorial[] = [];
+  try {
+    memorials = await apiV1<Memorial[]>("/api/v1/memorials/mine");
+  } catch {
+    memorials = [];
+  }
 
   return (
     <div className="dash-shell">
@@ -66,6 +70,11 @@ export default async function NewRequestPage({
         Share request notes and what is obtainable — budget, dates, location, and package
         preferences — so vendors can respond clearly.
       </p>
+      {sp.error && (
+        <p role="alert" className="soft-card" style={{ color: "#7a2e2e" }}>
+          {sp.error}
+        </p>
+      )}
       <div className="panel">
         <form className="form-stack" action={createRequest}>
           <input type="hidden" name="vendorId" value={sp.vendorId || ""} />
@@ -83,7 +92,7 @@ export default async function NewRequestPage({
               <option value="">None / standalone</option>
               {memorials.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.firstName} {m.lastName}
+                  {m.displayName}
                 </option>
               ))}
             </select>
@@ -119,7 +128,7 @@ export default async function NewRequestPage({
           <div style={{ display: "grid", gap: "0.9rem", gridTemplateColumns: "1fr 1fr" }}>
             <label>
               Budget
-              <input name="budget" placeholder="$500–$1,000" />
+              <input name="budget" placeholder="e.g. 500–1000 NGN / USD / GBP" />
             </label>
             <label>
               Preferred date

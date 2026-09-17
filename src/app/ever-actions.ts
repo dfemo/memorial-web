@@ -3,11 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { ApiError, apiV1, clearAuthCookies, type Memorial } from "@/lib/api-v1";
+import { ApiError, apiV1, type Memorial } from "@/lib/api-v1";
 
 export async function logoutAction() {
-  await clearAuthCookies();
-  redirect("/");
+  redirect("/api/session/logout");
 }
 
 export async function createMemorialAction(formData: FormData) {

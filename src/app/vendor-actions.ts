@@ -6,11 +6,10 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getAccessToken } from "@/lib/api-v1";
 import { normalizeCurrency } from "@/lib/currencies";
 import { platformFetch } from "@/lib/platform";
+import { requireAccessToken } from "@/lib/require-session";
 
 async function requireToken() {
-  const token = await getAccessToken();
-  if (!token) redirect("/sign-in?next=/dashboard/vendor");
-  return token;
+  return requireAccessToken("/dashboard/vendor");
 }
 
 export async function registerVendorAction(formData: FormData) {

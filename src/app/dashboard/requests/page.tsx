@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { createPlatformJwt, platformFetch } from "@/lib/platform";
+import { platformFetch } from "@/lib/platform";
+import { requireAccessToken } from "@/lib/require-session";
 
 type ServiceRequest = {
   id: number;
@@ -13,23 +12,17 @@ type ServiceRequest = {
 };
 
 export const metadata = { title: "Service requests" };
+export const dynamic = "force-dynamic";
 
 export default async function RequestsPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/sign-in");
+  const token = await requireAccessToken("/dashboard/requests");
 
   let requests: ServiceRequest[] = [];
   try {
-    const token = await createPlatformJwt({
-      sub: session.user.id,
-      email: session.user.email || "",
-      role: session.user.role,
-      name: session.user.name,
-    });
     const res = await platformFetch("/api/requests/mine", { token });
     if (res.ok) requests = await res.json();
   } catch {
-    /* API may be offline during Phase 1 */
+    /* API may be offline */
   }
 
   return (

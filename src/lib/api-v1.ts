@@ -4,6 +4,7 @@ import {
   ACTIVITY_COOKIE,
   AUTH_FLAG_COOKIE,
   REFRESH_COOKIE,
+  SESSION_COOKIE_MAX_AGE,
   SESSION_IDLE_SECONDS,
   sessionCookieOptions,
   type CookieWriteOptions,
@@ -16,6 +17,7 @@ export {
   ACTIVITY_COOKIE,
   SESSION_IDLE_SECONDS,
   SESSION_IDLE_MS,
+  SESSION_COOKIE_MAX_AGE,
 } from "@/lib/session";
 
 export type ApiUser = {
@@ -101,7 +103,7 @@ export function apiBase() {
 
 /** @deprecated use sessionCookieOptions */
 export function authCookieOptions(maxAge: number): CookieWriteOptions {
-  return sessionCookieOptions({ url: "https://local" }, maxAge);
+  return sessionCookieOptions({ url: process.env.AUTH_URL || "http://localhost:3000" }, maxAge);
 }
 
 /** @deprecated use sessionCookieOptions */
@@ -133,7 +135,7 @@ export function applySessionCookies(
   accessToken: string,
   refreshToken: string,
 ) {
-  const opts = sessionCookieOptions(request, SESSION_IDLE_SECONDS);
+  const opts = sessionCookieOptions(request, SESSION_COOKIE_MAX_AGE);
   target.cookies.set(ACCESS_COOKIE, accessToken, opts);
   target.cookies.set(REFRESH_COOKIE, refreshToken, opts);
   target.cookies.set(AUTH_FLAG_COOKIE, "1", { ...opts, httpOnly: false });
@@ -165,7 +167,7 @@ export function applyAuthCookies(
   accessToken: string,
   refreshToken: string,
 ) {
-  applySessionCookies(target, { url: "https://local" } as Request, accessToken, refreshToken);
+  applySessionCookies(target, { url: process.env.AUTH_URL || "http://localhost:3000" } as Request, accessToken, refreshToken);
 }
 
 /** @deprecated */
@@ -176,12 +178,15 @@ export function clearAuthCookiesOn(
     };
   },
 ) {
-  clearSessionCookies(target, { url: "https://local" } as Request);
+  clearSessionCookies(target, { url: process.env.AUTH_URL || "http://localhost:3000" } as Request);
 }
 
 export async function setAuthCookies(accessToken: string, refreshToken: string) {
   const jar = await cookies();
-  const opts = sessionCookieOptions({ url: process.env.AUTH_URL || "https://local" }, SESSION_IDLE_SECONDS);
+  const opts = sessionCookieOptions(
+    { url: process.env.AUTH_URL || "http://localhost:3000" },
+    SESSION_COOKIE_MAX_AGE,
+  );
   jar.set(ACCESS_COOKIE, accessToken, opts);
   jar.set(REFRESH_COOKIE, refreshToken, opts);
   jar.set(AUTH_FLAG_COOKIE, "1", { ...opts, httpOnly: false });
@@ -190,10 +195,14 @@ export async function setAuthCookies(accessToken: string, refreshToken: string) 
 
 export async function clearAuthCookies() {
   const jar = await cookies();
-  jar.delete(ACCESS_COOKIE);
-  jar.delete(REFRESH_COOKIE);
-  jar.delete(AUTH_FLAG_COOKIE);
-  jar.delete(ACTIVITY_COOKIE);
+  const cleared = sessionCookieOptions(
+    { url: process.env.AUTH_URL || "http://localhost:3000" },
+    0,
+  );
+  jar.set(ACCESS_COOKIE, "", cleared);
+  jar.set(REFRESH_COOKIE, "", cleared);
+  jar.set(AUTH_FLAG_COOKIE, "", { ...cleared, httpOnly: false });
+  jar.set(ACTIVITY_COOKIE, "", { ...cleared, httpOnly: false });
 }
 
 export async function apiV1<T>(

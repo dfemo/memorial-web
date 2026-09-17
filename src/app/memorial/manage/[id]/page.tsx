@@ -3,13 +3,8 @@ import { redirect } from "next/navigation";
 import { InviteLinkPanel } from "@/components/memorial/invite-link-panel";
 import { LegacyAiPanel } from "@/components/memorial/legacy-ai-panel";
 import { MemorialEditForm } from "@/components/memorial/memorial-edit-form";
-import {
-  ApiError,
-  apiV1,
-  getAccessToken,
-  getRefreshToken,
-  type MemorialDetail,
-} from "@/lib/api-v1";
+import { ApiError, apiV1, type MemorialDetail } from "@/lib/api-v1";
+import { requireAccessToken } from "@/lib/require-session";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -23,15 +18,7 @@ export default async function ManageMemorialPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const token = await getAccessToken();
-  const refresh = await getRefreshToken();
-
-  if (!token && refresh) {
-    redirect(`/api/session/refresh?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
-  }
-  if (!token) {
-    redirect(`/sign-in?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
-  }
+  await requireAccessToken(`/memorial/manage/${id}`);
 
   let detail: MemorialDetail | null = null;
   let loadError: string | null = null;
@@ -39,14 +26,8 @@ export default async function ManageMemorialPage({
   try {
     detail = await apiV1<MemorialDetail>(`/api/v1/memorials/${encodeURIComponent(id)}`);
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 401 || err.status === 403) && refresh) {
-      redirect(`/api/session/refresh?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
-    }
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-      redirect(
-        `/sign-in?next=${encodeURIComponent(`/memorial/manage/${id}`)}&error=` +
-          encodeURIComponent("Session expired. Please sign in again."),
-      );
+      redirect(`/api/session/refresh?next=${encodeURIComponent(`/memorial/manage/${id}`)}`);
     }
     loadError = err instanceof Error ? err.message : "Could not load this memorial.";
   }

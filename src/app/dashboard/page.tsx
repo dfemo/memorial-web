@@ -1,18 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ApiError, apiV1, getAccessToken, getRefreshToken, type Memorial } from "@/lib/api-v1";
+import { ApiError, apiV1, type Memorial } from "@/lib/api-v1";
+import { requireAccessToken } from "@/lib/require-session";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const token = await getAccessToken();
-  const refresh = await getRefreshToken();
-
-  if (!token && refresh) {
-    redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
-  }
-  if (!token) redirect("/sign-in?next=/dashboard");
+  await requireAccessToken("/dashboard");
 
   let memorials: Memorial[] = [];
   let loadError: string | null = null;
@@ -20,15 +15,8 @@ export default async function DashboardPage() {
   try {
     memorials = await apiV1<Memorial[]>("/api/v1/memorials/mine");
   } catch (err) {
-    // Spring often returns 403 for unauthenticated/expired JWT — treat like 401.
-    if (err instanceof ApiError && (err.status === 401 || err.status === 403) && refresh) {
-      redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
-    }
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-      redirect(
-        "/sign-in?next=/dashboard&error=" +
-          encodeURIComponent("Session expired. Please sign in again."),
-      );
+      redirect(`/api/session/refresh?next=${encodeURIComponent("/dashboard")}`);
     }
     loadError = err instanceof Error ? err.message : "Could not load memorials.";
   }

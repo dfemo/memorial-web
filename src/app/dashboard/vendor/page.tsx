@@ -9,7 +9,6 @@ import {
   respondToRequestAction,
   updateVendorProfileAction,
 } from "@/app/vendor-actions";
-import { getAccessToken } from "@/lib/api-v1";
 import {
   fetchMyVendor,
   fetchVendorComplaints,
@@ -23,6 +22,7 @@ import {
   type VendorPayment,
 } from "@/lib/vendor-api";
 import { formatMoney } from "@/lib/currencies";
+import { requireAccessToken } from "@/lib/require-session";
 
 export const metadata = { title: "Vendor dashboard" };
 export const dynamic = "force-dynamic";
@@ -62,8 +62,7 @@ export default async function VendorDashboardPage({
     error?: string;
   }>;
 }) {
-  const token = await getAccessToken();
-  if (!token) redirect("/sign-in?next=/dashboard/vendor");
+  await requireAccessToken("/dashboard/vendor");
 
   const sp = await searchParams;
   const tab = TABS.some((t) => t.id === sp.tab) ? (sp.tab as (typeof TABS)[number]["id"]) : "profile";
