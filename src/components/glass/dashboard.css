@@ -1,0 +1,104 @@
+@import "./glass.css";
+
+/*
+ * Bridges the public-site classes used by the dashboard pages (soft-card,
+ * btn-solid, tabs, badge, …) onto the glass tokens. Scoped to .gl-app, so
+ * the public pages keep their existing look.
+ */
+
+/* The dashboard shell brings its own navigation */
+body:has(.gl-app) > .site-header,
+body:has(.gl-app) > .site-footer {
+  display: none;
+}
+
+.gl-app {
+  --ink: var(--gl-ink);
+  --muted: var(--gl-muted);
+  --line: var(--gl-line);
+  --paper: var(--gl-s2);
+  --accent: var(--gl-accent);
+  --accent-soft: var(--gl-accent-soft);
+  --radius: var(--gl-radius-card);
+}
+
+.gl-app .dash-shell,
+.gl-app .narrow-shell {
+  width: 100%;
+  margin: 0;
+}
+
+.gl-app .dash-shell > p > a,
+.gl-app .gl-widget-body p > a:not([class]),
+.gl-app .soft-card p > a:not([class]) {
+  color: var(--gl-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gl-app .soft-card,
+.gl-app .panel {
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius-card);
+  background: var(--gl-s2);
+  -webkit-backdrop-filter: var(--gl-blur-2);
+  backdrop-filter: var(--gl-blur-2);
+  box-shadow: var(--gl-highlight), var(--gl-shadow);
+}
+
+.gl-app .panel { padding: 1.35rem; }
+
+.gl-app .btn {
+  min-height: 36px;
+  padding: 0.4rem 0.95rem;
+  border-radius: var(--gl-radius-ctl);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.gl-app .btn:hover { transform: none; }
+.gl-app .btn-solid { background: var(--gl-accent-solid); color: var(--gl-on-accent); }
+.gl-app .btn-solid:hover { background: color-mix(in srgb, var(--gl-accent-solid) 88%, #000); }
+
+.gl-app .btn-outline,
+.gl-app .btn-ghost {
+  border-color: var(--gl-line);
+  background: var(--gl-field);
+  color: var(--gl-ink);
+}
+
+.gl-app .btn-outline:hover,
+.gl-app .btn-ghost:hover { background: var(--gl-hover); }
+
+.gl-app .tabs {
+  border-color: var(--gl-border);
+  border-radius: 14px;
+  background: var(--gl-s1);
+  -webkit-backdrop-filter: var(--gl-blur-2);
+  backdrop-filter: var(--gl-blur-2);
+  box-shadow: var(--gl-highlight);
+}
+
+.gl-app .tabs a,
+.gl-app .tabs button { border-radius: var(--gl-radius-ctl); font-size: 0.9rem; }
+.gl-app .tabs a:hover { background: var(--gl-hover); color: var(--gl-ink); }
+.gl-app .tabs a.active,
+.gl-app .tabs button.active { background: var(--gl-accent-solid); color: var(--gl-on-accent); }
+
+.gl-app .account-type-option { background: var(--gl-field); }
+
+.gl-app [role="alert"],
+.gl-app .error { color: var(--gl-bad-ink) !important; }
+
+.gl-app .list-row { padding: 0.85rem 0; }
+.gl-app .list-row:first-child { padding-top: 0; }
+.gl-app .list-row:last-child { padding-bottom: 0; }
+
+.gl-row-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.gl-row-meta { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.2rem; color: var(--gl-muted); font-size: 0.9rem; }
+
+.gl-app .gl-page-title,
+.gl-app .gl-widget-body h3,
+.gl-app .gl-widget-body h4 { font-family: var(--font-display), Georgia, serif; }
+
+.gl-identity { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 16px; }
